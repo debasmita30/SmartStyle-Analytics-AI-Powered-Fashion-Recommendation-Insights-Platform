@@ -5,7 +5,6 @@ from PIL import Image
 import requests
 from io import BytesIO
 import altair as alt
-import streamlit.components.v1 as components
 
 # ----------------------- PAGE CONFIG -----------------------
 st.set_page_config(
@@ -14,77 +13,63 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------- ANIMATED EMOJI BACKGROUND ----------------
-# Gradient background
-st.markdown(
-    """
-    <style>
-    body {
-        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-        background-size: 400% 400%;
-        animation: gradientBG 15s ease infinite;
-    }
-    @keyframes gradientBG {
-        0% {background-position:0% 50%;}
-        50% {background-position:100% 50%;}
-        100% {background-position:0% 50%;}
-    }
-
-    /* Product Card Hover Effects */
-    .product-card {
-        transition: transform 0.2s, box-shadow 0.2s;
-        padding: 15px;
-        border-radius: 10px;
-        background-color: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    .product-card:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# Falling emoji animation using HTML+JS
-components.html("""
-<div id="falling-emojis"></div>
+# ----------------------- LIGHTWEIGHT SPARKLE ANIMATED BACKGROUND ----------------
+st.markdown("""
 <style>
-#falling-emojis {
+/* Gradient background */
+body {
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+}
+@keyframes gradientBG {
+    0% {background-position:0% 50%;}
+    50% {background-position:100% 50%;}
+    100% {background-position:0% 50%;}
+}
+
+/* Product Card Hover Effects */
+.product-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    padding: 15px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.product-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+/* Sparkle effect */
+.sparkle {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    animation: sparkle 4s linear infinite;
     z-index: -1;
+    pointer-events: none;
 }
-.emoji {
-    position: absolute;
-    font-size: 24px;
-    animation: fall linear infinite;
-}
-@keyframes fall {
-    0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
+
+@keyframes sparkle {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
     10% { opacity: 1; }
-    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    100% { transform: translateY(100vh) translateX(20px); opacity: 0; }
 }
 </style>
-<script>
-const emojis = ['🛍️','👕','👠','👜','🕶️','🏷️','💎','💄','👗'];
-for(let i=0; i<30; i++){
-    let span = document.createElement('span');
-    span.className = 'emoji';
-    span.innerText = emojis[Math.floor(Math.random()*emojis.length)];
-    span.style.left = Math.random()*100 + 'vw';
-    span.style.animationDuration = (5 + Math.random()*10) + 's';
-    span.style.animationDelay = Math.random()*5 + 's';
-    document.getElementById('falling-emojis').appendChild(span);
-}
-</script>
-""", height=0)
+
+<!-- Add multiple sparkles at different positions and delays -->
+<div class="sparkle" style="left:10%; animation-delay:0s;"></div>
+<div class="sparkle" style="left:25%; animation-delay:1s;"></div>
+<div class="sparkle" style="left:40%; animation-delay:2s;"></div>
+<div class="sparkle" style="left:55%; animation-delay:3s;"></div>
+<div class="sparkle" style="left:70%; animation-delay:1.5s;"></div>
+<div class="sparkle" style="left:85%; animation-delay:2.5s;"></div>
+""", unsafe_allow_html=True)
 
 # ----------------------- TITLE ------------------------------
 st.title("🛍️ SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform")
@@ -209,5 +194,6 @@ st.markdown("""
 ---
 ### 💡 About SmartStyle Analytics
 **SmartStyle Analytics** uses AI-powered insights to recommend styles, analyze fashion trends, and visualize data for Myntra’s product catalog.
+
 Developed by *Debasmita Chatterjee*.
 """)
