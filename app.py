@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------- ANIMATED BACKGROUND (UPDATED) ----------------
+# ----------------------- ANIMATED EMOJI BACKGROUND (FIXED) ----------------
 st.markdown(
     """
     <style>
@@ -40,143 +40,70 @@ st.markdown(
         box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }
 
-    /* --- NEW: Falling Icons Animation --- */
-    .falling-icons {
+    /* --- Falling Emojis Animation --- */
+    .falling-emojis {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
         overflow: hidden;
-        z-index: -1; /* Ensure it stays behind content */
-        pointer-events: none; /* Make sure it doesn't interfere with clicks */
+        z-index: -1;
+        pointer-events: none;
     }
 
-    .falling-icons i {
+    .falling-emojis span {
         position: absolute;
         display: block;
-        font-size: 20px; /* Base size */
-        color: rgba(255, 255, 255, 0.6); /* Semi-transparent white */
+        font-size: 20px;
+        color: rgba(255, 255, 255, 0.6);
         animation: fall linear infinite;
     }
 
-    /* Animation definition for falling objects */
     @keyframes fall {
         0% {
             transform: translateY(-100px) rotate(0deg);
             opacity: 0;
         }
-        10% {
-            opacity: 1;
-        }
-        90% {
-            opacity: 1;
-        }
+        10% { opacity: 1; }
         100% {
             transform: translateY(100vh) rotate(720deg);
             opacity: 0;
         }
     }
 
-    /* Individual icon styles for variety */
-    .falling-icons i:nth-child(even) {
-        animation-duration: 10s;
-        animation-delay: 0s;
-        left: 5%;
-        font-size: 25px;
-    }
-    .falling-icons i:nth-child(odd) {
-        animation-duration: 12s;
-        animation-delay: 2s;
-        left: 15%;
-        font-size: 18px;
-    }
-    .falling-icons i:nth-child(3n) {
-        animation-duration: 8s;
-        animation-delay: 4s;
-        left: 25%;
-        font-size: 30px;
-    }
-    .falling-icons i:nth-child(4n) {
-        animation-duration: 11s;
-        animation-delay: 6s;
-        left: 35%;
-        font-size: 22px;
-    }
-    .falling-icons i:nth-child(5n) {
-        animation-duration: 9s;
-        animation-delay: 1s;
-        left: 45%;
-        font-size: 28px;
-    }
-    .falling-icons i:nth-child(6n) {
-        animation-duration: 13s;
-        animation-delay: 3s;
-        left: 55%;
-        font-size: 20px;
-    }
-    .falling-icons i:nth-child(7n) {
-        animation-duration: 10s;
-        animation-delay: 5s;
-        left: 65%;
-        font-size: 32px;
-    }
-    .falling-icons i:nth-child(8n) {
-        animation-duration: 14s;
-        animation-delay: 7s;
-        left: 75%;
-        font-size: 24px;
-    }
-    .falling-icons i:nth-child(9n) {
-        animation-duration: 11s;
-        animation-delay: 0.5s;
-        left: 85%;
-        font-size: 26px;
-    }
-    .falling-icons i:nth-child(10n) {
-        animation-duration: 9s;
-        animation-delay: 2.5s;
-        left: 95%;
-        font-size: 19px;
-    }
+    /* Varying animations for a more random look */
+    .falling-emojis span:nth-of-type(0) { left: 10%; animation-duration: 12s; animation-delay: 0s; }
+    .falling-emojis span:nth-of-type(1) { left: 20%; animation-duration: 8s; animation-delay: 2s; }
+    .falling-emojis span:nth-of-type(2) { left: 30%; animation-duration: 14s; animation-delay: 4s; }
+    .falling-emojis span:nth-of-type(3) { left: 40%; animation-duration: 10s; animation-delay: 1s; }
+    .falling-emojis span:nth-of-type(4) { left: 50%; animation-duration: 15s; animation-delay: 5s; }
+    .falling-emojis span:nth-of-type(5) { left: 60%; animation-duration: 9s; animation-delay: 3s; }
+    .falling-emojis span:nth-of-type(6) { left: 70%; animation-duration: 11s; animation-delay: 6s; }
+    .falling-emojis span:nth-of-type(7) { left: 80%; animation-duration: 13s; animation-delay: 0.5s; }
+    .falling-emojis span:nth-of-type(8) { left: 90%; animation-duration: 7s; animation-delay: 1.5s; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Insert the falling icons. We'll use Font Awesome icons.
-# Make sure to include Font Awesome CSS in your Streamlit app for this to work.
-# You can add this line at the very beginning of your app (outside st.markdown for CSS):
-# st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">', unsafe_allow_html=True)
+# This div contains the emojis that will be animated by the CSS above
 st.markdown(
     """
-    <div class="falling-icons">
-        <i class="fas fa-shopping-bag"></i>
-        <i class="fas fa-tshirt"></i>
-        <i class="fas fa-shoe-prints"></i>
-        <i class="fas fa-tag"></i>
-        <i class="fas fa-hat-cowboy"></i>
-        <i class="fas fa-socks"></i>
-        <i class="fas fa-gem"></i>
-        <i class="fas fa-scarf"></i>
-        <i class="fas fa-handbag"></i>
-        <i class="fas fa-glasses"></i>
-        <i class="fas fa-shopping-bag"></i>
-        <i class="fas fa-tshirt"></i>
-        <i class="fas fa-shoe-prints"></i>
-        <i class="fas fa-tag"></i>
-        <i class="fas fa-hat-cowboy"></i>
-        <i class="fas fa-socks"></i>
-        <i class="fas fa-gem"></i>
-        <i class="fas fa-scarf"></i>
-        <i class="fas fa-handbag"></i>
-        <i class="fas fa-glasses"></i>
+    <div class="falling-emojis">
+        <span>🛍️</span>
+        <span>👕</span>
+        <span>👠</span>
+        <span>👜</span>
+        <span>🕶️</span>
+        <span>🏷️</span>
+        <span>💎</span>
+        <span>💄</span>
+        <span>👗</span>
     </div>
     """,
     unsafe_allow_html=True
 )
-# Make sure to include Font Awesome CSS for the icons to display:
-st.markdown('<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">', unsafe_allow_html=True)
 
 
 # ----------------------- TITLE ------------------------------
@@ -224,7 +151,7 @@ top_brands_df = top_brands.reset_index()
 
 chart = alt.Chart(top_brands_df).mark_bar(color='mediumorchid').encode(
     x=alt.X('brand', sort='-y', title='Brand'),
-    y=alt.Y('avg_rating', title='Average Rating'), # Removed the hardcoded scale for dynamic range
+    y=alt.Y('avg_rating', title='Average Rating'),
     tooltip=['brand', 'avg_rating']
 ).properties(width=700, height=400)
 
@@ -252,7 +179,6 @@ else:
                 with cols[c]:
                     st.markdown('<div class="product-card">', unsafe_allow_html=True)
                     
-                    # --- SUGGESTION ENGINE LOGIC ---
                     is_high_risk = product['price'] > 3000 and product['avg_rating'] < 4.2
                     is_safe_bet = product['avg_rating'] >= 4.5
 
@@ -299,7 +225,5 @@ st.markdown("""
 ---
 ### 💡 About SmartStyle Analytics
 **SmartStyle Analytics** uses AI-powered insights to recommend styles, analyze fashion trends, and visualize data for Myntra’s product catalog.
-
 Developed by *Debasmita Chatterjee*.
 """)
-
