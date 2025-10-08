@@ -65,18 +65,48 @@ st.altair_chart(chart, use_container_width=True)
 
 # ----------------------- TOP RATED PRODUCTS CAROUSEL --------
 st.markdown("### 🌟 Top Rated Products")
+
+# Horizontal scroll CSS
+st.markdown(
+    """
+    <style>
+    .scroll-container {
+        display: flex;
+        overflow-x: auto;
+        padding: 10px 0px;
+    }
+    .scroll-item {
+        flex: 0 0 auto;
+        margin-right: 15px;
+        max-width: 200px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 top_rated = df.sort_values("avg_rating", ascending=False).head(10)
 
-carousel_cols = st.columns(len(top_rated))
-for idx, product in top_rated.iterrows():
-    with carousel_cols[idx % len(carousel_cols)]:
-        try:
-            response = requests.get(product["img"], timeout=5)
-            img = Image.open(BytesIO(response.content))
-            st.image(img, use_column_width=True)
-        except:
-            st.warning("Image not available.")
-        st.caption(f"{product['name']} ({product['avg_rating']}⭐)")
+scroll_html = '<div class="scroll-container">'
+for _, product in top_rated.iterrows():
+    try:
+        response = requests.get(product["img"], timeout=5)
+        img = Image.open(BytesIO(response.content))
+        img.save(f"/tmp/{product['name']}.png")
+        scroll_html += f'''
+        <div class="scroll-item">
+            <img src="data:image/png;base64,{st.image(img, output_format="PNG")._repr_png_().decode("utf-8")}" width="200">
+            <p style="font-size:12px; font-weight:bold;">{product["name"]} ({product["avg_rating"]}⭐)</p>
+        </div>
+        '''
+    except:
+        scroll_html += f'''
+        <div class="scroll-item">
+            <p style="font-size:12px;">Image not available</p>
+        </div>
+        '''
+scroll_html += '</div>'
+st.markdown(scroll_html, unsafe_allow_html=True)
 
 # ----------------------- PRODUCT GALLERY ---------------------
 st.markdown("### 👗 Product Gallery")
@@ -93,7 +123,7 @@ for r in range(rows):
                 try:
                     response = requests.get(product["img"], timeout=5)
                     img = Image.open(BytesIO(response.content))
-                    st.image(img, use_column_width=True)
+                    st.image(img, use_container_width=True)
                 except:
                     st.warning("Image not available.")
                 st.subheader(product["name"])
