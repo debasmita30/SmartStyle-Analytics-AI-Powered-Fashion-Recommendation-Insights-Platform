@@ -13,6 +13,34 @@ st.set_page_config(
     layout="wide"
 )
 
+# ----------------------- BACKGROUND ANIMATION ----------------
+st.markdown(
+    """
+    <style>
+    body {
+        background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #fad0c4, #ffdde1);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
+    }
+    @keyframes gradientBG {
+        0% {background-position:0% 50%;}
+        50% {background-position:100% 50%;}
+        100% {background-position:0% 50%;}
+    }
+    .product-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    .product-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # ----------------------- TITLE ------------------------------
 st.title("🛍️ SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform")
 st.markdown("Empowering Myntra with data-driven fashion intelligence, recommendations, and product insights.")
@@ -63,50 +91,34 @@ chart = alt.Chart(top_brands_df).mark_bar(color='mediumorchid').encode(
 
 st.altair_chart(chart, use_container_width=True)
 
-# ----------------------- TOP RATED PRODUCTS CAROUSEL --------
+# ----------------------- TOP RATED PRODUCTS -----------------
 st.markdown("### 🌟 Top Rated Products")
+top_rated = df.sort_values("avg_rating", ascending=False).head(9)  # show 9 for 3x3 grid
+products_per_row = 3
+rows = (len(top_rated) + products_per_row - 1) // products_per_row
 
-# Horizontal scroll CSS
-st.markdown(
-    """
-    <style>
-    .scroll-container {
-        display: flex;
-        overflow-x: auto;
-        padding: 10px 0px;
-    }
-    .scroll-item {
-        flex: 0 0 auto;
-        margin-right: 15px;
-        max-width: 200px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-top_rated = df.sort_values("avg_rating", ascending=False).head(10)
-
-scroll_html = '<div class="scroll-container">'
-for _, product in top_rated.iterrows():
-    try:
-        response = requests.get(product["img"], timeout=5)
-        img = Image.open(BytesIO(response.content))
-        img.save(f"/tmp/{product['name']}.png")
-        scroll_html += f'''
-        <div class="scroll-item">
-            <img src="data:image/png;base64,{st.image(img, output_format="PNG")._repr_png_().decode("utf-8")}" width="200">
-            <p style="font-size:12px; font-weight:bold;">{product["name"]} ({product["avg_rating"]}⭐)</p>
-        </div>
-        '''
-    except:
-        scroll_html += f'''
-        <div class="scroll-item">
-            <p style="font-size:12px;">Image not available</p>
-        </div>
-        '''
-scroll_html += '</div>'
-st.markdown(scroll_html, unsafe_allow_html=True)
+for r in range(rows):
+    cols = st.columns(products_per_row)
+    for c in range(products_per_row):
+        idx = r * products_per_row + c
+        if idx < len(top_rated):
+            product = top_rated.iloc[idx]
+            with cols[c]:
+                st.markdown('<div class="product-card">', unsafe_allow_html=True)
+                try:
+                    response = requests.get(product["img"], timeout=5)
+                    img = Image.open(BytesIO(response.content))
+                    st.image(img, use_container_width=True)
+                except:
+                    st.warning("Image not available.")
+                st.subheader(product["name"])
+                st.write(f"**Brand:** {product['brand']}")
+                st.write(f"**Price:** ₹{product['price']:.2f}")
+                st.write(f"**Rating:** ⭐ {product['avg_rating']}")
+                st.progress(min(product["avg_rating"] / 5, 1.0))
+                st.caption(f"Color: {product['colour']}")
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown("---")
 
 # ----------------------- PRODUCT GALLERY ---------------------
 st.markdown("### 👗 Product Gallery")
@@ -120,6 +132,7 @@ for r in range(rows):
         if idx < len(filtered_df):
             product = filtered_df.iloc[idx]
             with cols[c]:
+                st.markdown('<div class="product-card">', unsafe_allow_html=True)
                 try:
                     response = requests.get(product["img"], timeout=5)
                     img = Image.open(BytesIO(response.content))
@@ -132,6 +145,7 @@ for r in range(rows):
                 st.write(f"**Rating:** ⭐ {product['avg_rating']}")
                 st.progress(min(product["avg_rating"] / 5, 1.0))
                 st.caption(f"Color: {product['colour']}")
+                st.markdown('</div>', unsafe_allow_html=True)
                 st.markdown("---")
 
 # ----------------------- FOOTER -------------------------------
