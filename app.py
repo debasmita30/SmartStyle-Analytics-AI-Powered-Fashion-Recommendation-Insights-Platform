@@ -13,12 +13,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------- LIGHTWEIGHT SPARKLE ANIMATED BACKGROUND ----------------
+# ----------------------- LIGHTWEIGHT STARRY SKY ANIMATED BACKGROUND ----------------
 st.markdown("""
 <style>
-/* Gradient background */
+/* Gradient background - subtle dark theme */
 body {
-    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background: linear-gradient(-45deg, #0b0111, #1a032d, #3c096c, #240046);
     background-size: 400% 400%;
     animation: gradientBG 15s ease infinite;
 }
@@ -42,34 +42,40 @@ body {
     box-shadow: 0 10px 20px rgba(0,0,0,0.3);
 }
 
-/* Sparkle effect */
-.sparkle {
-    position: fixed;
-    width: 6px;
-    height: 6px;
-    background: white;
-    border-radius: 50%;
-    opacity: 0;
-    animation: sparkle 4s linear infinite;
+/* --- Lightweight Starry Sky Animation --- */
+@keyframes move-twink-back {
+    from {background-position:0 0;}
+    to {background-position:-10000px 5000px;}
+}
+
+.stars, .twinkling {
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    width:100%;
+    height:100%;
+    display:block;
     z-index: -1;
     pointer-events: none;
 }
 
-@keyframes sparkle {
-    0% { transform: translateY(0) translateX(0); opacity: 0; }
-    10% { opacity: 1; }
-    100% { transform: translateY(100vh) translateX(20px); opacity: 0; }
+.stars {
+    background:#000 url(https://www.script-tutorials.com/demos/360/images/stars.png) repeat top center;
+}
+
+.twinkling{
+    background:transparent url(https://www.script-tutorials.com/demos/360/images/twinkling.png) repeat top center;
+    animation:move-twink-back 200s linear infinite;
 }
 </style>
 
-<!-- Add multiple sparkles at different positions and delays -->
-<div class="sparkle" style="left:10%; animation-delay:0s;"></div>
-<div class="sparkle" style="left:25%; animation-delay:1s;"></div>
-<div class="sparkle" style="left:40%; animation-delay:2s;"></div>
-<div class="sparkle" style="left:55%; animation-delay:3s;"></div>
-<div class="sparkle" style="left:70%; animation-delay:1.5s;"></div>
-<div class="sparkle" style="left:85%; animation-delay:2.5s;"></div>
+<div class="stars"></div>
+<div class="twinkling"></div>
+
 """, unsafe_allow_html=True)
+
 
 # ----------------------- TITLE ------------------------------
 st.title("🛍️ SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform")
@@ -153,8 +159,8 @@ else:
                         response = requests.get(product["img"], timeout=5)
                         img = Image.open(BytesIO(response.content))
                         st.image(img, use_container_width=True)
-                    except:
-                        st.warning("Image not available.")
+                    except Exception as e:
+                        st.warning(f"Image not available.")
 
                     st.subheader(product["name"])
                     if selected_size != 'All':
@@ -167,7 +173,7 @@ else:
 
                     st.write(f"**Brand:** {product['brand']}")
                     st.write(f"**Price:** ₹{product['price']:.2f}")
-                    st.write(f"**Rating:** ⭐ {product['avg_rating']}")
+                    st.write(f"**Rating:** ⭐ {product['avg_rating']:.2f}")
                     st.progress(min(product["avg_rating"] / 5, 1.0))
 
                     if is_high_risk:
@@ -182,7 +188,7 @@ else:
                                 for i, alt_product in alternatives.iterrows():
                                     st.markdown(f"**{alt_product['name']}**")
                                     st.write(f"**Price:** ₹{alt_product['price']:.2f} (You save ₹{product['price'] - alt_product['price']:.2f}!)")
-                                    st.write(f"**Rating:** ⭐ {alt_product['avg_rating']} (Higher Rating)")
+                                    st.write(f"**Rating:** ⭐ {alt_product['avg_rating']:.2f} (Higher Rating)")
                                     st.markdown("---")
 
                     st.caption(f"Color: {product['colour']}")
@@ -194,6 +200,5 @@ st.markdown("""
 ---
 ### 💡 About SmartStyle Analytics
 **SmartStyle Analytics** uses AI-powered insights to recommend styles, analyze fashion trends, and visualize data for Myntra’s product catalog.
-
 Developed by *Debasmita Chatterjee*.
 """)
