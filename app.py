@@ -299,5 +299,7 @@ st.markdown("""
 ---
 ### 💡 About SmartStyle Analytics
 **SmartStyle Analytics** uses AI-powered insights to recommend styles, analyze fashion trends, and visualize data for Myntra’s product catalog.
+
 Developed by *Debasmita Chatterjee*.
 """)
+
