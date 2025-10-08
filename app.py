@@ -13,12 +13,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------- BACKGROUND ANIMATION ----------------
+# ----------------------- ANIMATED BACKGROUND ----------------
+# This section creates the animated gradient background and card hover effect
 st.markdown(
     """
     <style>
     body {
-        background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #fad0c4, #ffdde1);
+        background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
         background-size: 400% 400%;
         animation: gradientBG 15s ease infinite;
     }
@@ -31,6 +32,8 @@ st.markdown(
         transition: transform 0.2s, box-shadow 0.2s;
         padding: 10px;
         border-radius: 10px;
+        background-color: rgba(255, 255, 255, 0.1); /* Optional: slight background for cards */
+        backdrop-filter: blur(5px); /* Optional: frosted glass effect */
     }
     .product-card:hover {
         transform: translateY(-10px);
@@ -50,9 +53,11 @@ st.markdown("Empowering Myntra with data-driven fashion intelligence, recommenda
 def load_data():
     CSV_URL = "https://raw.githubusercontent.com/debasmita30/SmartStyle-Analytics-AI-Powered-Fashion-Recommendation-Insights-Platform/main/Fashion%20Dataset.csv"
     df = pd.read_csv(CSV_URL)
-    df.dropna(subset=["name", "brand", "price", "avg_rating"], inplace=True)
+    df.dropna(subset=["name", "brand", "price", "avg_rating", "img"], inplace=True)
     df["price"] = pd.to_numeric(df["price"], errors="coerce")
     df["avg_rating"] = pd.to_numeric(df["avg_rating"], errors="coerce")
+    # Drop rows where price or rating could not be converted
+    df.dropna(subset=["price", "avg_rating"], inplace=True)
     return df
 
 df = load_data()
@@ -74,9 +79,9 @@ filtered_df = df[
 # ----------------------- DASHBOARD METRICS -------------------
 st.subheader("📊 Fashion Insights Overview")
 col1, col2, col3 = st.columns(3)
-col1.metric("Total Products", len(df))
+col1.metric("Total Products in Catalog", f"{len(df):,}")
 col2.metric("Average Price (₹)", f"{df['price'].mean():.2f}")
-col3.metric("Average Rating", f"{df['avg_rating'].mean():.2f}")
+col3.metric("Average Rating", f"{df['avg_rating'].mean():.2f} ⭐")
 
 # ----------------------- CHARTS ------------------------------
 st.markdown("### 📈 Top 10 Brands by Average Rating")
@@ -85,73 +90,54 @@ top_brands_df = top_brands.reset_index()
 
 chart = alt.Chart(top_brands_df).mark_bar(color='mediumorchid').encode(
     x=alt.X('brand', sort='-y', title='Brand'),
-    y=alt.Y('avg_rating', title='Average Rating'),
+    y=alt.Y('avg_rating', title='Average Rating', scale=alt.Scale(domain=[4, 5])),
     tooltip=['brand', 'avg_rating']
 ).properties(width=700, height=400)
 
 st.altair_chart(chart, use_container_width=True)
 
-# ----------------------- TOP RATED PRODUCTS -----------------
-st.markdown("### 🌟 Top Rated Products")
-top_rated = df.sort_values("avg_rating", ascending=False).head(9)  # show 9 for 3x3 grid
-products_per_row = 3
-rows = (len(top_rated) + products_per_row - 1) // products_per_row
+st.markdown("---") # Visual separator
 
-for r in range(rows):
-    cols = st.columns(products_per_row)
-    for c in range(products_per_row):
-        idx = r * products_per_row + c
-        if idx < len(top_rated):
-            product = top_rated.iloc[idx]
-            with cols[c]:
-                st.markdown('<div class="product-card">', unsafe_allow_html=True)
-                try:
-                    response = requests.get(product["img"], timeout=5)
-                    img = Image.open(BytesIO(response.content))
-                    st.image(img, use_container_width=True)
-                except:
-                    st.warning("Image not available.")
-                st.subheader(product["name"])
-                st.write(f"**Brand:** {product['brand']}")
-                st.write(f"**Price:** ₹{product['price']:.2f}")
-                st.write(f"**Rating:** ⭐ {product['avg_rating']}")
-                st.progress(min(product["avg_rating"] / 5, 1.0))
-                st.caption(f"Color: {product['colour']}")
-                st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown("---")
+# ----------------------- DYNAMIC PRODUCT GALLERY (FIXED) ---------------------
+st.markdown(f"### 👗 Product Gallery ({len(filtered_df)} products found)")
 
-# ----------------------- PRODUCT GALLERY ---------------------
-st.markdown("### 👗 Product Gallery")
-products_per_row = 3
-rows = (len(filtered_df) + products_per_row - 1) // products_per_row
+# Sort the filtered results to show the best-rated products first
+sorted_filtered_df = filtered_df.sort_values("avg_rating", ascending=False)
 
-for r in range(rows):
-    cols = st.columns(products_per_row)
-    for c in range(products_per_row):
-        idx = r * products_per_row + c
-        if idx < len(filtered_df):
-            product = filtered_df.iloc[idx]
-            with cols[c]:
-                st.markdown('<div class="product-card">', unsafe_allow_html=True)
-                try:
-                    response = requests.get(product["img"], timeout=5)
-                    img = Image.open(BytesIO(response.content))
-                    st.image(img, use_container_width=True)
-                except:
-                    st.warning("Image not available.")
-                st.subheader(product["name"])
-                st.write(f"**Brand:** {product['brand']}")
-                st.write(f"**Price:** ₹{product['price']:.2f}")
-                st.write(f"**Rating:** ⭐ {product['avg_rating']}")
-                st.progress(min(product["avg_rating"] / 5, 1.0))
-                st.caption(f"Color: {product['colour']}")
-                st.markdown('</div>', unsafe_allow_html=True)
-                st.markdown("---")
+if sorted_filtered_df.empty:
+    st.warning("No products match your current filter criteria. Please adjust the filters.")
+else:
+    products_per_row = 3
+    # Calculate rows based on the length of the sorted_filtered_df
+    rows = (len(sorted_filtered_df) + products_per_row - 1) // products_per_row
+
+    for r in range(rows):
+        cols = st.columns(products_per_row)
+        for c in range(products_per_row):
+            idx = r * products_per_row + c
+            if idx < len(sorted_filtered_df):
+                product = sorted_filtered_df.iloc[idx]
+                with cols[c]:
+                    st.markdown('<div class="product-card">', unsafe_allow_html=True)
+                    try:
+                        response = requests.get(product["img"], timeout=5)
+                        img = Image.open(BytesIO(response.content))
+                        st.image(img, use_container_width=True)
+                    except Exception as e:
+                        st.warning("Image not available.")
+                    st.subheader(product["name"])
+                    st.write(f"**Brand:** {product['brand']}")
+                    st.write(f"**Price:** ₹{product['price']:.2f}")
+                    st.write(f"**Rating:** ⭐ {product['avg_rating']}")
+                    st.progress(min(product["avg_rating"] / 5, 1.0))
+                    st.caption(f"Color: {product['colour']}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    st.write("") # Adds a little vertical space after each card
 
 # ----------------------- FOOTER -------------------------------
 st.markdown("""
 ---
-### 💡 About SmartStyle Analytics  
-**SmartStyle Analytics** uses AI-powered insights to recommend styles, analyze fashion trends, and visualize data for Myntra’s product catalog.  
+### 💡 About SmartStyle Analytics
+**SmartStyle Analytics** uses AI-powered insights to recommend styles, analyze fashion trends, and visualize data for Myntra’s product catalog.
 Developed by *Debasmita Chatterjee*.
 """)
