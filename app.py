@@ -1,116 +1,89 @@
 
 import streamlit as st
 import pandas as pd
-import pickle
-import os
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
+import requests
+from io import BytesIO
 
-st.set_page_config(layout="wide", page_title="Myntra StyleGuard (Public Demo)", page_icon="👗")
+# ----------------------- PAGE CONFIG -----------------------
+st.set_page_config(page_title="SmartStyle Analytics", page_icon="🛍️", layout="wide")
 
-# ---------------------------
-# Loading Dataset from GitHub 
-# ---------------------------
-CSV_URL = "https://raw.githubusercontent.com/yourusername/myntra-styleguard-demo/main/Fashion%20Dataset.csv"  # ← Replace with your own raw link
-EMBEDDINGS_PATH = "demo_embeddings.pkl"
+# ----------------------- TITLE ------------------------------
+st.title("🛍️ SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform")
+st.markdown("Empowering Myntra with data-driven fashion intelligence, recommendations, and product insights.")
 
+# ----------------------- LOAD DATA --------------------------
 @st.cache_data
 def load_data():
+    CSV_URL = "https://raw.githubusercontent.com/debasmita30/SmartStyle-Analytics-AI-Powered-Fashion-Recommendation-Insights-Platform/main/Fashion%20Dataset.csv"
     df = pd.read_csv(CSV_URL)
-    if len(df) > 10:
-        df = df.sample(10, random_state=42).reset_index(drop=True)
-    df.fillna({'description': '', 'p_attributes': '', 'img': '', 'brand': ''}, inplace=True)
-    df['avg_rating'] = df['avg_rating'].fillna(0)
-    if 'category' not in df.columns:
-        df['category'] = 'General'
-    df['combined_text'] = df['name'] + " " + df['description'] + " " + df['p_attributes']
-    df['confidence'] = (df['avg_rating'] / df['avg_rating'].max() * 100).round(0)
-    df['buyers_kept'] = df['confidence'].apply(lambda x: f"{int(x)}% buyers kept this product")
+    df.dropna(subset=["name", "brand", "price", "avg_rating"], inplace=True)
+    df["price"] = pd.to_numeric(df["price"], errors="coerce")
+    df["avg_rating"] = pd.to_numeric(df["avg_rating"], errors="coerce")
     return df
 
 df = load_data()
 
-# ---------------------------
-# Load or Compute Embeddings
-# ---------------------------
-@st.cache_resource
-def get_embeddings(df):
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    embeddings = model.encode(df['combined_text'].tolist(), show_progress_bar=False)
-    return embeddings
+# ----------------------- SIDEBAR FILTERS ---------------------
+st.sidebar.header("🔍 Filter Products")
+brands = ["All"] + sorted(df["brand"].dropna().unique().tolist())
+selected_brand = st.sidebar.selectbox("Select Brand", brands)
+min_price, max_price = int(df["price"].min()), int(df["price"].max())
+price_range = st.sidebar.slider("Select Price Range", min_price, max_price, (min_price, max_price))
+min_rating = st.sidebar.slider("Minimum Rating", 0.0, 5.0, 3.0)
 
-embeddings = get_embeddings(df)
-cos_sim = cosine_similarity(embeddings, embeddings)
+filtered_df = df[
+    ((df["brand"] == selected_brand) | (selected_brand == "All")) &
+    (df["price"].between(price_range[0], price_range[1])) &
+    (df["avg_rating"] >= min_rating)
+]
 
-# ---------------------------
-#  Helper Functions
-# ---------------------------
-def get_similar_products(index, top_n=5, min_rating=0):
-    sim_scores = sorted(enumerate(cos_sim[index]), key=lambda x: x[1], reverse=True)
-    result = []
-    for idx, score in sim_scores[1:]:
-        if df.loc[idx, 'avg_rating'].round() < min_rating:
-            continue
-        result.append(idx)
-        if len(result) >= top_n:
-            break
-    return df.iloc[result]
+# ----------------------- DASHBOARD METRICS -------------------
+st.subheader("📊 Fashion Insights Overview")
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Products", len(df))
+col2.metric("Average Price (₹)", f"{df['price'].mean():.2f}")
+col3.metric("Average Rating", f"{df['avg_rating'].mean():.2f}")
 
-def get_cheaper_alternatives(index, top_n=5, min_rating=0):
-    base_price = df.loc[index, 'price']
-    sim_scores = sorted(enumerate(cos_sim[index]), key=lambda x: x[1], reverse=True)
-    result = []
-    for idx, score in sim_scores[1:]:
-        if df.loc[idx, 'price'] >= base_price:
-            continue
-        if df.loc[idx, 'avg_rating'].round() < min_rating:
-            continue
-        result.append(idx)
-        if len(result) >= top_n:
-            break
-    return df.iloc[result]
-
-# ---------------------------
-# Streamlit UI
-# ---------------------------
-st.title("👗 Myntra StyleGuard — Public Demo")
-
-min_rating = st.slider("Minimum Rating (⭐)", 0, 5, 0, 1)
-product_choice = st.selectbox("Choose a Product:", df['name'].tolist())
-
-product_index = df[df['name'] == product_choice].index[0]
-row = df.iloc[product_index]
-
-st.image(row['img'], width=400)
-st.subheader(row['name'])
-st.markdown(f"**Brand:** {row['brand']}")
-st.markdown(f"**Price:** ₹{row['price']}")
-st.markdown(f"**Rating:** {'⭐'*int(round(row['avg_rating']))} ({row['avg_rating']:.1f})")
-st.markdown(f"**{row['buyers_kept']}**")
-
-# Similar Products
-st.markdown("### 🔹 Similar Products")
-sim_df = get_similar_products(product_index, top_n=5, min_rating=min_rating)
-cols = st.columns(5)
-for i, (idx, r) in enumerate(sim_df.iterrows()):
-    with cols[i]:
-        st.image(r['img'], width=120)
-        st.caption(f"{r['name']} — ₹{r['price']}")
-
-# Cheaper Alternatives
-st.markdown("### 🔹 Cheaper Alternatives")
-cheap_df = get_cheaper_alternatives(product_index, top_n=5, min_rating=min_rating)
-cols = st.columns(5)
-for i, (idx, r) in enumerate(cheap_df.iterrows()):
-    with cols[i]:
-        st.image(r['img'], width=120)
-        st.caption(f"{r['name']} — ₹{r['price']}")
-
-st.markdown("### 💹 Price Comparison")
-fig, ax = plt.subplots(figsize=(6, 3))
-ax.bar(df['name'], df['price'], color='lightcoral')
-ax.set_ylabel("Price (₹)")
-ax.set_xticklabels(df['name'], rotation=45, ha='right', fontsize=8)
+# ----------------------- CHARTS ------------------------------
+st.markdown("### 📈 Top 10 Brands by Average Rating")
+top_brands = df.groupby("brand")["avg_rating"].mean().sort_values(ascending=False).head(10)
+fig, ax = plt.subplots(figsize=(10, 4))
+top_brands.plot(kind="bar", color="mediumorchid", ax=ax)
+plt.xticks(rotation=45, ha="right")
+plt.title("Top 10 Brands by Average Rating")
 st.pyplot(fig)
 
+# ----------------------- PRODUCT DISPLAY ---------------------
+st.markdown("### 👗 Product Gallery")
+
+for _, row in filtered_df.iterrows():
+    with st.container():
+        cols = st.columns([1, 3])
+        with cols[0]:
+            try:
+                response = requests.get(row["img"], timeout=5)
+                img = Image.open(BytesIO(response.content))
+                st.image(img, caption=row["name"], width=150)
+                if st.button(f"🔍 View Image: {row['p_id']}"):
+                    st.image(img, caption=f"🖼️ {row['name']} – {row['brand']}", use_container_width=True)
+            except:
+                st.warning("Image not available.")
+        with cols[1]:
+            st.subheader(row["name"])
+            st.write(f"**Brand:** {row['brand']}")
+            st.write(f"**Price:** ₹{row['price']:.2f}")
+            st.write(f"**Average Rating:** ⭐ {row['avg_rating']}")
+            st.progress(min(row["avg_rating"] / 5, 1.0))
+            st.caption(f"Color: {row['colour']}")
+            st.markdown("---")
+
+# ----------------------- FOOTER -------------------------------
+st.markdown("""
+---
+### 💡 About SmartStyle Analytics  
+**SmartStyle Analytics** uses AI-powered insights to recommend styles, analyze fashion trends, and visualize data for Myntra’s product catalog.  
+Developed by *Debasmita Chatterjee*.
+""")
