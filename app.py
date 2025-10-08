@@ -5,6 +5,7 @@ from PIL import Image
 import requests
 from io import BytesIO
 import altair as alt
+import streamlit.components.v1 as components
 
 # ----------------------- PAGE CONFIG -----------------------
 st.set_page_config(
@@ -14,10 +15,10 @@ st.set_page_config(
 )
 
 # ----------------------- ANIMATED EMOJI BACKGROUND ----------------
+# Gradient background
 st.markdown(
     """
     <style>
-    /* Gradient Background Animation */
     body {
         background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
         background-size: 400% 400%;
@@ -42,55 +43,48 @@ st.markdown(
         transform: translateY(-10px);
         box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }
-
-    /* Falling Emojis */
-    .falling-emojis {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        z-index: -1;
-        pointer-events: none;
-    }
-    .falling-emojis span {
-        position: absolute;
-        display: block;
-        font-size: 24px;
-        opacity: 0;
-        animation: fall linear infinite;
-    }
-    @keyframes fall {
-        0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
-        10% { opacity: 1; }
-        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-    }
-
-    /* Position and Timing for Each Emoji */
-    .falling-emojis span:nth-of-type(1) { left: 5%; animation-duration: 12s; animation-delay: 0s; }
-    .falling-emojis span:nth-of-type(2) { left: 15%; animation-duration: 8s; animation-delay: 2s; }
-    .falling-emojis span:nth-of-type(3) { left: 25%; animation-duration: 14s; animation-delay: 4s; }
-    .falling-emojis span:nth-of-type(4) { left: 35%; animation-duration: 10s; animation-delay: 1s; }
-    .falling-emojis span:nth-of-type(5) { left: 45%; animation-duration: 15s; animation-delay: 5s; }
-    .falling-emojis span:nth-of-type(6) { left: 55%; animation-duration: 9s; animation-delay: 3s; }
-    .falling-emojis span:nth-of-type(7) { left: 65%; animation-duration: 11s; animation-delay: 6s; }
-    .falling-emojis span:nth-of-type(8) { left: 75%; animation-duration: 13s; animation-delay: 0.5s; }
-    .falling-emojis span:nth-of-type(9) { left: 85%; animation-duration: 7s; animation-delay: 1.5s; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-st.markdown(
-    """
-    <div class="falling-emojis">
-        <span>🛍️</span> <span>👕</span> <span>👠</span> <span>👜</span> <span>🕶️</span>
-        <span>🏷️</span> <span>💎</span> <span>💄</span> <span>👗</span>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# Falling emoji animation using HTML+JS
+components.html("""
+<div id="falling-emojis"></div>
+<style>
+#falling-emojis {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+}
+.emoji {
+    position: absolute;
+    font-size: 24px;
+    animation: fall linear infinite;
+}
+@keyframes fall {
+    0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+</style>
+<script>
+const emojis = ['🛍️','👕','👠','👜','🕶️','🏷️','💎','💄','👗'];
+for(let i=0; i<30; i++){
+    let span = document.createElement('span');
+    span.className = 'emoji';
+    span.innerText = emojis[Math.floor(Math.random()*emojis.length)];
+    span.style.left = Math.random()*100 + 'vw';
+    span.style.animationDuration = (5 + Math.random()*10) + 's';
+    span.style.animationDelay = Math.random()*5 + 's';
+    document.getElementById('falling-emojis').appendChild(span);
+}
+</script>
+""", height=0)
 
 # ----------------------- TITLE ------------------------------
 st.title("🛍️ SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform")
