@@ -13,19 +13,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------- LIGHTWEIGHT STARRY SKY ANIMATED BACKGROUND ----------------
+# ----------------------- STATIC GRADIENT BACKGROUND ----------------
 st.markdown("""
 <style>
-/* Gradient background - subtle dark theme */
+/* Static Gradient Background */
 body {
-    background: linear-gradient(-45deg, #0b0111, #1a032d, #3c096c, #240046);
-    background-size: 400% 400%;
-    animation: gradientBG 15s ease infinite;
-}
-@keyframes gradientBG {
-    0% {background-position:0% 50%;}
-    50% {background-position:100% 50%;}
-    100% {background-position:0% 50%;}
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-attachment: fixed;
 }
 
 /* Product Card Hover Effects */
@@ -41,41 +35,8 @@ body {
     transform: translateY(-10px);
     box-shadow: 0 10px 20px rgba(0,0,0,0.3);
 }
-
-/* --- Lightweight Starry Sky Animation --- */
-@keyframes move-twink-back {
-    from {background-position:0 0;}
-    to {background-position:-10000px 5000px;}
-}
-
-.stars, .twinkling {
-    position:fixed;
-    top:0;
-    left:0;
-    right:0;
-    bottom:0;
-    width:100%;
-    height:100%;
-    display:block;
-    z-index: -1;
-    pointer-events: none;
-}
-
-.stars {
-    background:#000 url(https://www.script-tutorials.com/demos/360/images/stars.png) repeat top center;
-}
-
-.twinkling{
-    background:transparent url(https://www.script-tutorials.com/demos/360/images/twinkling.png) repeat top center;
-    animation:move-twink-back 200s linear infinite;
-}
 </style>
-
-<div class="stars"></div>
-<div class="twinkling"></div>
-
 """, unsafe_allow_html=True)
-
 
 # ----------------------- TITLE ------------------------------
 st.title("🛍️ SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform")
