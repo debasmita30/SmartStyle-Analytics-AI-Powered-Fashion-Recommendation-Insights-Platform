@@ -13,10 +13,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------- ANIMATED EMOJI BACKGROUND (FIXED) ----------------
+# ----------------------- ANIMATED EMOJI BACKGROUND ----------------
 st.markdown(
     """
     <style>
+    /* Gradient Background Animation */
     body {
         background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
         background-size: 400% 400%;
@@ -27,6 +28,8 @@ st.markdown(
         50% {background-position:100% 50%;}
         100% {background-position:0% 50%;}
     }
+
+    /* Product Card Hover Effects */
     .product-card {
         transition: transform 0.2s, box-shadow 0.2s;
         padding: 15px;
@@ -40,9 +43,9 @@ st.markdown(
         box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }
 
-    /* --- Falling Emojis Animation --- */
+    /* Falling Emojis */
     .falling-emojis {
-        position: fixed;
+        position: absolute;
         top: 0;
         left: 0;
         width: 100%;
@@ -51,60 +54,43 @@ st.markdown(
         z-index: -1;
         pointer-events: none;
     }
-
     .falling-emojis span {
         position: absolute;
         display: block;
-        font-size: 20px;
-        color: rgba(255, 255, 255, 0.6);
+        font-size: 24px;
+        opacity: 0;
         animation: fall linear infinite;
     }
-
     @keyframes fall {
-        0% {
-            transform: translateY(-100px) rotate(0deg);
-            opacity: 0;
-        }
+        0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
         10% { opacity: 1; }
-        100% {
-            transform: translateY(100vh) rotate(720deg);
-            opacity: 0;
-        }
+        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
     }
 
-    /* Varying animations for a more random look */
-    .falling-emojis span:nth-of-type(0) { left: 10%; animation-duration: 12s; animation-delay: 0s; }
-    .falling-emojis span:nth-of-type(1) { left: 20%; animation-duration: 8s; animation-delay: 2s; }
-    .falling-emojis span:nth-of-type(2) { left: 30%; animation-duration: 14s; animation-delay: 4s; }
-    .falling-emojis span:nth-of-type(3) { left: 40%; animation-duration: 10s; animation-delay: 1s; }
-    .falling-emojis span:nth-of-type(4) { left: 50%; animation-duration: 15s; animation-delay: 5s; }
-    .falling-emojis span:nth-of-type(5) { left: 60%; animation-duration: 9s; animation-delay: 3s; }
-    .falling-emojis span:nth-of-type(6) { left: 70%; animation-duration: 11s; animation-delay: 6s; }
-    .falling-emojis span:nth-of-type(7) { left: 80%; animation-duration: 13s; animation-delay: 0.5s; }
-    .falling-emojis span:nth-of-type(8) { left: 90%; animation-duration: 7s; animation-delay: 1.5s; }
+    /* Position and Timing for Each Emoji */
+    .falling-emojis span:nth-of-type(1) { left: 5%; animation-duration: 12s; animation-delay: 0s; }
+    .falling-emojis span:nth-of-type(2) { left: 15%; animation-duration: 8s; animation-delay: 2s; }
+    .falling-emojis span:nth-of-type(3) { left: 25%; animation-duration: 14s; animation-delay: 4s; }
+    .falling-emojis span:nth-of-type(4) { left: 35%; animation-duration: 10s; animation-delay: 1s; }
+    .falling-emojis span:nth-of-type(5) { left: 45%; animation-duration: 15s; animation-delay: 5s; }
+    .falling-emojis span:nth-of-type(6) { left: 55%; animation-duration: 9s; animation-delay: 3s; }
+    .falling-emojis span:nth-of-type(7) { left: 65%; animation-duration: 11s; animation-delay: 6s; }
+    .falling-emojis span:nth-of-type(8) { left: 75%; animation-duration: 13s; animation-delay: 0.5s; }
+    .falling-emojis span:nth-of-type(9) { left: 85%; animation-duration: 7s; animation-delay: 1.5s; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# This div contains the emojis that will be animated by the CSS above
 st.markdown(
     """
     <div class="falling-emojis">
-        <span>🛍️</span>
-        <span>👕</span>
-        <span>👠</span>
-        <span>👜</span>
-        <span>🕶️</span>
-        <span>🏷️</span>
-        <span>💎</span>
-        <span>💄</span>
-        <span>👗</span>
+        <span>🛍️</span> <span>👕</span> <span>👠</span> <span>👜</span> <span>🕶️</span>
+        <span>🏷️</span> <span>💎</span> <span>💄</span> <span>👗</span>
     </div>
     """,
     unsafe_allow_html=True
 )
-
 
 # ----------------------- TITLE ------------------------------
 st.title("🛍️ SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform")
@@ -131,6 +117,10 @@ min_price, max_price = int(df["price"].min()), int(df["price"].max())
 price_range = st.sidebar.slider("Select Price Range", min_price, max_price, (min_price, max_price))
 min_rating = st.sidebar.slider("Minimum Rating", 0.0, 5.0, 3.0)
 
+# Size Selection
+sizes = ['All', 'S', 'M', 'L', 'XL']
+selected_size = st.sidebar.radio("Select Size", sizes, horizontal=True)
+
 filtered_df = df[
     ((df["brand"] == selected_brand) | (selected_brand == "All")) &
     (df["price"].between(price_range[0], price_range[1])) &
@@ -156,12 +146,10 @@ chart = alt.Chart(top_brands_df).mark_bar(color='mediumorchid').encode(
 ).properties(width=700, height=400)
 
 st.altair_chart(chart, use_container_width=True)
+st.markdown("---")
 
-st.markdown("---") 
-
-# ----------------------- DYNAMIC PRODUCT GALLERY WITH SUGGESTION ENGINE ---------------------
+# ----------------------- DYNAMIC PRODUCT GALLERY ---------------------
 st.markdown(f"### 👗 Product Gallery ({len(filtered_df)} products found)")
-
 sorted_filtered_df = filtered_df.sort_values("avg_rating", ascending=False)
 
 if sorted_filtered_df.empty:
@@ -178,7 +166,7 @@ else:
                 product = sorted_filtered_df.iloc[idx]
                 with cols[c]:
                     st.markdown('<div class="product-card">', unsafe_allow_html=True)
-                    
+
                     is_high_risk = product['price'] > 3000 and product['avg_rating'] < 4.2
                     is_safe_bet = product['avg_rating'] >= 4.5
 
@@ -186,16 +174,18 @@ else:
                         response = requests.get(product["img"], timeout=5)
                         img = Image.open(BytesIO(response.content))
                         st.image(img, use_container_width=True)
-                    except Exception as e:
+                    except:
                         st.warning("Image not available.")
-                    
-                    st.subheader(product["name"])
 
+                    st.subheader(product["name"])
+                    if selected_size != 'All':
+                        st.info(f"✅ Available in your selected size: {selected_size}")
+                    
                     if is_safe_bet:
                         st.success("✅ Confidence Pick: 95%+ buyers kept this item!")
                     elif is_high_risk:
                         st.warning("⚠️ Heads-up: Potential high return risk.")
-                    
+
                     st.write(f"**Brand:** {product['brand']}")
                     st.write(f"**Price:** ₹{product['price']:.2f}")
                     st.write(f"**Rating:** ⭐ {product['avg_rating']}")
@@ -207,7 +197,7 @@ else:
                             (df['price'] < product['price']) &
                             (df['avg_rating'] > product['avg_rating'])
                         ].sort_values('avg_rating', ascending=False).head(2)
-                        
+
                         if not alternatives.empty:
                             with st.expander("💡 View Safer, Better-Rated Alternatives"):
                                 for i, alt_product in alternatives.iterrows():
@@ -215,10 +205,10 @@ else:
                                     st.write(f"**Price:** ₹{alt_product['price']:.2f} (You save ₹{product['price'] - alt_product['price']:.2f}!)")
                                     st.write(f"**Rating:** ⭐ {alt_product['avg_rating']} (Higher Rating)")
                                     st.markdown("---")
-                    
+
                     st.caption(f"Color: {product['colour']}")
                     st.markdown('</div>', unsafe_allow_html=True)
-                    st.write("") 
+                    st.write("")
 
 # ----------------------- FOOTER -------------------------------
 st.markdown("""
