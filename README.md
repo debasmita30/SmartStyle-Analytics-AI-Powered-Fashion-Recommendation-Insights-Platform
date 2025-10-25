@@ -122,7 +122,5 @@ Developed by: Debasmita Chatterjee
 Project: SmartStyle Analytics
 Type: AI + Data Visualization + Fashion Recommendation
 
-🏷️ License
 
-This project is released under the MIT License.
 
