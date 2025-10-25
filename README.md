@@ -1,4 +1,4 @@
-# 🌟 SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform
+## SmartStyle Analytics: AI-Powered Fashion Recommendation & Insights Platform
 
 SmartStyle Analytics is an intelligent fashion data visualization and recommendation platform that analyzes product trends, customer ratings, and brand insights to enhance online shopping experiences.  
 
