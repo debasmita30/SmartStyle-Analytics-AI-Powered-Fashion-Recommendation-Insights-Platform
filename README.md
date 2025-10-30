@@ -5,6 +5,8 @@ SmartStyle Analytics is an intelligent fashion data visualization and recommenda
 This interactive web app combines data science, visualization, and AI-driven logic to help users explore, compare, and make smarter purchase decisions.
 
 [🌐 View App](https://smartstyle-analytics.streamlit.app/)
+[📊 View Dashboard](https://public.tableau.com/views/SmartStyleAnalytics/FashionDashboard?:showVizHome=no&:embed=true" )
+
 
 ---
 
@@ -87,14 +89,10 @@ Set your subdomain, for example:
 smartstyle-analytics.streamlit.app
 
 
-Your app will deploy in seconds 🚀
+App will deploy in seconds 🚀
 
 📊 Tableau Dashboard
 
-Experience the live, interactive analytics here:
-👉 View Tableau Dashboard
-
-<iframe src="https://public.tableau.com/views/SmartStyleAnalytics/FashionDashboard?:showVizHome=no&:embed=true" width="100%" height="700"></iframe>
 Dashboards Included:
 
 Category Performance Overview: Visualize ratings and prices across fashion types
