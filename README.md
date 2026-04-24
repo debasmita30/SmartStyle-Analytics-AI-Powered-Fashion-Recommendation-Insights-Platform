@@ -345,33 +345,10 @@ The Confidence Score is the platform's core intelligence signal — a composite 
 ```
 smartstyle-analytics/
 │
-├── 📄 app.py                        # Main Streamlit application entrypoint
-├── 📄 requirements.txt              # Python dependencies
-├── 📄 README.md
-│
-├── 📂 data/                         # Dataset layer
-│   └── 📄 Fashion_Dataset.csv       # 14K+ product records
-│                                    # (also hosted via GitHub Raw URL)
-│
-├── 📂 modules/                      # Core logic modules
-│   ├── 📄 confidence_score.py       # AI scoring engine
-│   ├── 📄 recommender.py            # Smart recommendation logic
-│   ├── 📄 data_loader.py            # GitHub raw CSV fetcher + cache
-│   └── 📄 filters.py               # Multi-signal filter pipeline
-│
-├── 📂 visualizations/               # Chart generation layer
-│   ├── 📄 brand_analysis.py         # Brand performance charts
-│   ├── 📄 price_distribution.py     # Price range visualizations
-│   ├── 📄 rating_charts.py          # Rating distribution + trends
-│   └── 📄 color_heatmap.py         # Color demand concentration
-│
-├── 📂 components/                   # UI building blocks
-│   ├── 📄 product_card.py           # Product intelligence card renderer
-│   ├── 📄 dashboard.py              # Analytics dashboard layout
-│   └── 📄 sidebar_filters.py       # Filter panel component
-│
-└── 📂 assets/                       # Static assets
-    └── 📄 styles.css               # Custom Streamlit CSS styling
+├── 📄 app.py                    # Main Streamlit application
+├── 📄 Fashion Dataset.csv       # 14K+ product records dataset
+├── 📄 visualization.png         # Sample visualization / preview image
+└── 📄 README.md                 # Project documentation
 ```
 
 ---
