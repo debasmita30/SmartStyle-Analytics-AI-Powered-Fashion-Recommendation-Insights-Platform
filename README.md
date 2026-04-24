@@ -154,6 +154,124 @@
 
 ---
 
+# 📊 Dashboard Insights — Fashion Retail Performance & Intelligence
+
+> **Source:** `visualization.png` — Power BI Dashboard: *Fashion Retail Performance & Insights*
+> **Dataset:** Fashion Dataset.csv · 14,220 products · ₹169 – ₹47,999 price range
+
+---
+
+## 🔢 Platform-Level KPIs
+
+| Metric | Value | Interpretation |
+|--------|-------|----------------|
+| 🛍️ Total Products | **14,220** | Full catalog size analyzed |
+| 🧠 Confidence Score | **82 / 100** | Strong overall catalog health — majority are keeper products |
+| ⭐ Average Rating | **4.10 / 5.0** | Consistently high customer satisfaction across brands |
+| 📝 Total Ratings | **~1M+** | Statistically robust signal — high review volume |
+| 💰 Price Range | **₹169 – ₹47,999** | Wide spread from budget to ultra-premium segments |
+
+---
+
+## 🎨 Insight 1 — Color Demand Is Highly Concentrated
+
+> **Chart:** *Top 10 Colours by Total Sales (Donut Chart)*
+
+| Rank | Color | Total Sales | Share |
+|------|-------|-------------|-------|
+| 1 | ⚫ Black | 5.11M | 17.72% |
+| 2 | 🔵 Blue | 4.95M | 17.16% |
+| 3 | 🔴 Red | 3.70M | 12.84% |
+| 4 | 🟤 Pink | 3.55M | 12.29% |
+| 5 | 🔷 Navy Blue | 2.37M | 8.21% |
+| 6 | 🟢 Green | 2.13M | 7.37% |
+| 7 | ⬜ White | 1.99M | 6.88% |
+| 8 | 🔵 Grey | 1.70M | 5.91% |
+| 9 | 🟠 Maroon | 1.68M | 5.82% |
+| — | Others | — | ~6% |
+
+**Key Takeaway:**
+- Black + Blue alone account for **34.88% of total sales** — demand is concentrated in neutral/cool tones
+- Top 4 colors (Black, Blue, Red, Pink) capture **~60% of all sales**
+- Assortment strategy should prioritize depth in Black and Blue before expanding into niche colors
+
+---
+
+## ⭐ Insight 2 — Rating vs. Sales Has a Non-Linear Relationship
+
+> **Chart:** *Sales and Average Rating by Product Colour (Bubble Chart)*
+
+- All colors cluster tightly between **4.04 – 4.12 average rating** — very low variance
+- **Navy Blue and Green** show the highest average ratings (~4.11–4.12) despite moderate sales volume
+- **Orange** has the lowest rating (~4.04) AND the lowest sales — double signal of underperformance
+- **Pink** shows high sales volume but mid-tier rating — suggests popularity driven by trend, not satisfaction
+- Rating alone is **not a reliable predictor of sales volume** — brand visibility and color trend play a larger role
+
+---
+
+## 💰 Insight 3 — Premium Pricing Does Not Guarantee Higher Ratings
+
+> **Chart:** *Maximum Price vs. Average Rating by Brand and Colour (Combo Chart)*
+
+- Brands like **Readiprint Fashions** and **Masaba** command prices up to **₹30K+** but show ratings around **4.1–4.2** — similar to budget brands
+- **Average Rating line (blue)** fluctuates between **4.1 – 4.3** regardless of maximum price tier
+- **Ethnovogue** shows one of the highest average ratings (~4.3) with moderate pricing — best price-value brand
+- **Stylee Lifestyle** shows a pricing spike with no corresponding rating uplift — potential overpricing signal
+- **Conclusion:** Price-value correlation is weak across the premium segment — buyers do not consistently reward high-priced brands with better ratings
+
+---
+
+## 🏷️ Insight 4 — Top Brand Breakdown by Color Segment
+
+> **Chart:** *10K Sales Segments for Top 2 Brands (Shaily vs. Readiprint Fashions)*
+
+**Shaily (Top Performer):**
+| Color Segment | Sales (10K units) |
+|---------------|-------------------|
+| Maroon | 9.72K |
+| Charcoal | 8.53K |
+| Taupe | 8.50K |
+
+**Readiprint Fashions:**
+| Color Segment | Sales (10K units) |
+|---------------|-------------------|
+| Cream | 9.00K |
+| Red | 3.82K |
+| Orange | 3.6K |
+| Coral | 3.43K |
+| Fuchsia | 5.95K |
+
+**Key Takeaway:**
+- **Shaily** dominates in neutral/earthy tones (Maroon, Charcoal, Taupe) — strong ethnic/casual wear positioning
+- **Readiprint Fashions** has a broader color spread with strength in Cream and Fuchsia — targets festive/occasion wear
+- Both brands avoid pure Black/Blue dominance — they occupy **complementary niches** to the overall market trend
+
+---
+
+## 🧠 Insight 5 — Confidence Score Validates Catalog Quality
+
+- Overall catalog confidence score of **82/100** means the majority of products show:
+  - High average ratings (≥ 4.0)
+  - High review volume (statistically reliable)
+  - Acceptable price-risk ratio
+- This is a **strong signal for a low-return-risk catalog** overall
+- Products scoring below 50 (flagged as return risk) represent the minority — targeted for de-listing or re-pricing
+
+---
+
+## 📌 Strategic Recommendations
+
+| Finding | Recommendation |
+|---------|----------------|
+| Black + Blue = 35% of sales | Prioritize stock depth in these colors before range expansion |
+| Weak price-value correlation | Flag premium items with ratings < 4.1 for re-pricing review |
+| Orange: low rating + low sales | Consider de-listing or repositioning orange-dominant SKUs |
+| Shaily dominates neutral tones | Partner or benchmark Shaily's assortment strategy for ethnic wear |
+| Ethnovogue: best rating-to-price ratio | Feature as a "value pick" in recommendation engine |
+| Confidence Score = 82 | Catalog is healthy — focus optimization on the bottom 18% |
+
+---
+
 ## ✨ Key Features
 
 <details open>
