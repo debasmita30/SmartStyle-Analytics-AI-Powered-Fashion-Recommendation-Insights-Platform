@@ -1,702 +1,597 @@
-<div align="center">
+import streamlit as st
+import pandas as pd
+import numpy as np
+import requests
+from io import BytesIO
+from PIL import Image
+import altair as alt
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:1a0533,50:3d1a6e,100:7b2fa8&height=220&section=header&text=SmartStyle%20Analytics&fontSize=52&fontColor=ffffff&fontAlignY=38&desc=AI-Powered%20Fashion%20Intelligence%20%E2%80%94%20Discover.%20Analyze.%20Recommend.&descAlignY=58&descSize=16&descColor=f0c6ff&animation=fadeIn" width="100%"/>
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+st.set_page_config(
+    page_title="Retail Product Analytics & Recommendation Modeling",
+    page_icon="🏷️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-<br/>
+# ============================================================
+# THEME STATE
+# ============================================================
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
 
-<p>
-  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Tableau-E97627?style=for-the-badge&logo=tableau&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Status-Live-22c55e?style=for-the-badge&logo=checkmarx&logoColor=white"/>
-</p>
+def toggle_theme():
+    st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
 
-<p>
-  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square"/>
-  <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Maintained-Yes-blue?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Products_Analyzed-14K%2B-purple?style=flat-square"/>
-  <img src="https://img.shields.io/badge/Avg_Rating-4.1%2F5-orange?style=flat-square"/>
-</p>
+THEME = st.session_state.theme
 
-<br/>
+PALETTES = {
+    "dark": {
+        "bg": "#16151A",
+        "bg_secondary": "#1E1D22",
+        "surface": "#23222A",
+        "surface_hover": "#2A2932",
+        "border": "rgba(255,255,255,0.08)",
+        "border_strong": "rgba(255,255,255,0.16)",
+        "text": "#F2F0EC",
+        "text_muted": "#9A98A0",
+        "text_dim": "#6E6C74",
+        "thread": "#D4683E",
+        "sage": "#8FAA80",
+        "rust": "#C45B4F",
+        "gold": "#D9B24C",
+        "chart_grid": "rgba(255,255,255,0.06)",
+    },
+    "light": {
+        "bg": "#FAF7F2",
+        "bg_secondary": "#F1ECE3",
+        "surface": "#FFFFFF",
+        "surface_hover": "#F6F2EC",
+        "border": "rgba(22,21,26,0.10)",
+        "border_strong": "rgba(22,21,26,0.18)",
+        "text": "#16151A",
+        "text_muted": "#6B6960",
+        "text_dim": "#9A9890",
+        "thread": "#C2542E",
+        "sage": "#5F7A52",
+        "rust": "#A8392E",
+        "gold": "#A9791E",
+        "chart_grid": "rgba(22,21,26,0.06)",
+    },
+}
+C = PALETTES[THEME]
 
-<a href="https://smartstyle-analytics.streamlit.app/">
-  <img src="https://img.shields.io/badge/🚀%20%20Live%20App%20%20—%20Click%20to%20Launch-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live App"/>
-</a>
-&nbsp;&nbsp;
-<a href="https://app.powerbi.com/view?r=eyJrIjoiMWRiNTBkYTUtNmVhOC00MWI3LTgyZjQtYTA3ZDY3ZWRmYWU0IiwidCI6ImUxNGU3M2ViLTUyNTEtNDM4OC04ZDY3LThmOWYyZTJkNWE0NiIsImMiOjEwfQ==&pageName=6967225da59d13f389f1">
-  <img src="https://img.shields.io/badge/📊%20%20Power%20BI%20Dashboard%20%20—%20View%20Now-F2C811?style=for-the-badge&logo=powerbi&logoColor=black" alt="Dashboard"/>
-</a>
+# ============================================================
+# GLOBAL CSS
+# ============================================================
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Caveat:wght@600;700&display=swap');
 
-<br/><br/>
+html, body, [class*="css"] {{
+    font-family: 'Inter', sans-serif;
+}}
 
-> **A production-grade fashion intelligence platform** that combines AI-powered confidence scoring, smart product recommendations, and interactive data visualizations to help shoppers make better decisions and help brands understand what sells — and what gets returned.
+.stApp {{
+    background: {C['bg']};
+    color: {C['text']};
+}}
 
-<br/>
+[data-testid="stSidebar"] {{
+    background: {C['bg_secondary']};
+    border-right: 1px solid {C['border']};
+}}
 
----
+[data-testid="stSidebar"] * {{
+    color: {C['text']} !important;
+}}
 
+#MainMenu, footer, header {{visibility: hidden;}}
+
+/* ---------- Page-load fade ---------- */
+.fade-in {{
+    animation: fadeInUp 0.6s ease-out both;
+}}
+@keyframes fadeInUp {{
+    from {{ opacity: 0; transform: translateY(10px); }}
+    to {{ opacity: 1; transform: translateY(0); }}
+}}
+.fade-1 {{ animation-delay: 0.02s; }}
+.fade-2 {{ animation-delay: 0.10s; }}
+.fade-3 {{ animation-delay: 0.18s; }}
+.fade-4 {{ animation-delay: 0.26s; }}
+
+/* ---------- Hero ---------- */
+.hero-wrap {{
+    background: {C['bg_secondary']};
+    border: 1px solid {C['border']};
+    border-radius: 16px;
+    padding: 28px 32px 22px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+}}
+.hero-title-row {{
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 4px;
+}}
+.hero-title {{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 30px;
+    letter-spacing: -0.01em;
+    color: {C['text']};
+    margin: 0;
+}}
+.hero-script {{
+    font-family: 'Caveat', cursive;
+    font-weight: 600;
+    font-size: 24px;
+    color: {C['thread']};
+    transform: rotate(-2.5deg);
+    display: inline-block;
+}}
+.hero-sub {{
+    font-size: 11.5px;
+    letter-spacing: 0.05em;
+    color: {C['text_muted']};
+    text-transform: uppercase;
+    margin-top: 2px;
+}}
+
+/* ---------- KPI cards ---------- */
+.kpi-card {{
+    background: {C['surface']};
+    border: 1px solid {C['border']};
+    border-radius: 12px;
+    padding: 16px 18px;
+    transition: border-color 0.25s ease, transform 0.25s ease;
+}}
+.kpi-card:hover {{
+    border-color: {C['border_strong']};
+    transform: translateY(-2px);
+}}
+.kpi-label {{
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    color: {C['text_muted']};
+    text-transform: uppercase;
+    margin-bottom: 7px;
+}}
+.kpi-value {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 23px;
+    font-weight: 600;
+    color: {C['text']};
+}}
+.kpi-delta-pos {{ color: {C['sage']}; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; }}
+.kpi-delta-neg {{ color: {C['rust']}; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; }}
+
+/* ---------- Section labels ---------- */
+.section-label {{
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: {C['text_muted']};
+    text-transform: uppercase;
+    margin: 26px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}}
+.section-label::before {{
+    content: '';
+    width: 3px;
+    height: 12px;
+    background: {C['thread']};
+    border-radius: 1px;
+    display: inline-block;
+}}
+
+/* ---------- Tag card (product) ---------- */
+.tag-card {{
+    background: {C['surface']};
+    border: 1px solid {C['border']};
+    border-radius: 6px;
+    padding: 14px 13px 13px;
+    position: relative;
+    margin-bottom: 16px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}}
+.tag-card:hover {{
+    transform: translateY(-4px);
+    border-color: {C['border_strong']};
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}}
+.tag-hole {{
+    position: absolute;
+    top: 11px;
+    left: 11px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: {C['bg']};
+    border: 1.2px solid {C['border_strong']};
+    z-index: 3;
+}}
+.tag-name {{
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.35;
+    margin: 10px 0 2px;
+    color: {C['text']};
+    min-height: 36px;
+}}
+.tag-brand {{
+    font-size: 11px;
+    color: {C['text_muted']};
+    margin-bottom: 10px;
+}}
+.tag-price-row {{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: 1px dashed {C['border_strong']};
+    padding-top: 9px;
+    margin-top: 6px;
+}}
+.tag-price {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: {C['text']};
+}}
+.badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 500;
+    padding: 4px 9px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+}}
+.badge-gem {{ background: rgba(143,170,128,0.16); color: {C['sage']}; }}
+.badge-risk {{ background: rgba(196,91,79,0.16); color: {C['rust']}; }}
+.badge-premium {{ background: rgba(217,178,76,0.16); color: {C['gold']}; }}
+
+/* ---------- Theme toggle button styling ---------- */
+div[data-testid="stButton"] button {{
+    background: {C['surface']} !important;
+    border: 1px solid {C['border_strong']} !important;
+    color: {C['text']} !important;
+    border-radius: 20px !important;
+    font-size: 12.5px !important;
+    transition: all 0.2s ease !important;
+}}
+div[data-testid="stButton"] button:hover {{
+    background: {C['surface_hover']} !important;
+    border-color: {C['thread']} !important;
+}}
+
+hr {{ border-color: {C['border']} !important; }}
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================
+# DATA LOADING
+# ============================================================
+CATEGORY_TOKENS = ['Kurta','Saree','Dress','Sweatshirt','T-Shirt','Tshirt','Shirt','Jeans','Trousers','Top',
+                    'Jacket','Sweater','Poncho','Skirt','Palazzo','Leggings','Blazer','Co-ords','Jumpsuit',
+                    'Dupatta','Kurti','Salwar','Lehenga','Gown','Tunic','Shrug','Cardigan','Hoodie','Pyjama',
+                    'Track Pants','Shorts','Capris','Tights']
+
+def extract_category(name):
+    name = str(name)
+    for t in CATEGORY_TOKENS:
+        if t.lower() in name.lower():
+            return t
+    return "Other"
+
+@st.cache_data
+def load_data():
+    url = "https://raw.githubusercontent.com/debasmita30/SmartStyle-Analytics-AI-Powered-Fashion-Recommendation-Insights-Platform/main/Fashion%20Dataset.csv"
+    df = pd.read_csv(url)
+    df.dropna(subset=["name", "brand", "price", "img"], inplace=True)
+    df["price"] = pd.to_numeric(df["price"], errors="coerce")
+    df["avg_rating"] = pd.to_numeric(df["avg_rating"], errors="coerce")
+    df.dropna(subset=["price"], inplace=True)
+    df["avg_rating"] = df["avg_rating"].fillna(df["avg_rating"].median())
+
+    df["category"] = df["name"].apply(extract_category)
+
+    cat_median = df.groupby("category")["price"].median()
+    df["category_median_price"] = df["category"].map(cat_median)
+    df["price_deviation"] = ((df["price"] - df["category_median_price"]) / df["category_median_price"]) * 100
+
+    cat_avg_rating = df.groupby("category")["avg_rating"].mean()
+    df["category_avg_rating"] = df["category"].map(cat_avg_rating)
+
+    rating_norm = (df["avg_rating"] - df["avg_rating"].min()) / (df["avg_rating"].max() - df["avg_rating"].min() + 1e-9)
+    price_norm = (df["price"] - df["price"].min()) / (df["price"].max() - df["price"].min() + 1e-9)
+    df["value_score"] = (rating_norm - price_norm).round(3)
+
+    df["is_hidden_gem"] = (df["price_deviation"] < -10) & (df["avg_rating"] >= 4.2)
+    df["is_overpriced_risk"] = (df["price_deviation"] > 25) & (df["avg_rating"] < 4.0)
+    df["is_premium_justified"] = (df["price_deviation"] > 15) & (df["avg_rating"] >= 4.4)
+
+    return df
+
+df = load_data()
+
+# ============================================================
+# SIDEBAR FILTERS
+# ============================================================
+with st.sidebar:
+    st.markdown(f"<div style='font-family:Fraunces,serif; font-weight:600; font-size:17px; margin-bottom:2px;'>Filter catalog</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size:11px; color:{C['text_muted']}; margin-bottom:18px;'>Narrow the 14,330-SKU dataset</div>", unsafe_allow_html=True)
+
+    categories = ["All"] + sorted([c for c in df["category"].unique() if c != "Other"]) + ["Other"]
+    selected_category = st.selectbox("Category", categories)
+
+    brands_pool = df if selected_category == "All" else df[df["category"] == selected_category]
+    brands = ["All"] + sorted(brands_pool["brand"].dropna().unique().tolist())
+    selected_brand = st.selectbox("Brand", brands)
+
+    min_price, max_price = int(df["price"].min()), int(df["price"].max())
+    price_range = st.slider("Price range (₹)", min_price, max_price, (min_price, max_price))
+
+    min_rating = st.slider("Minimum rating", 0.0, 5.0, 3.0, step=0.1)
+
+    st.markdown("---")
+    signal_filter = st.radio(
+        "Highlight",
+        ["All products", "Hidden gems only", "Overpriced risk only", "Premium justified only"],
+        index=0
+    )
+
+    st.markdown("---")
+    st.button(f"Switch to {'light' if THEME=='dark' else 'dark'} mode", on_click=toggle_theme, use_container_width=True)
+
+filtered_df = df[
+    ((df["brand"] == selected_brand) | (selected_brand == "All")) &
+    ((df["category"] == selected_category) | (selected_category == "All")) &
+    (df["price"].between(price_range[0], price_range[1])) &
+    (df["avg_rating"] >= min_rating)
+].copy()
+
+if signal_filter == "Hidden gems only":
+    filtered_df = filtered_df[filtered_df["is_hidden_gem"]]
+elif signal_filter == "Overpriced risk only":
+    filtered_df = filtered_df[filtered_df["is_overpriced_risk"]]
+elif signal_filter == "Premium justified only":
+    filtered_df = filtered_df[filtered_df["is_premium_justified"]]
+
+# ============================================================
+# HERO
+# ============================================================
+st.markdown(f"""
+<div class="hero-wrap fade-in fade-1">
+  <div class="hero-title-row">
+    <span class="hero-title">Retail Product Analytics</span>
+    <span class="hero-script">&amp; Recommendation Modeling</span>
+  </div>
+  <div class="hero-sub">{len(df):,} SKUs · {df['brand'].nunique():,} brands · price &amp; rating intelligence across the live catalog</div>
 </div>
-
-## 📋 Table of Contents
-
-| # | Section | Description |
-|---|---------|-------------|
-| 1 | [🎯 Problem Statement](#-problem-statement) | Why this platform exists |
-| 2 | [💡 Solution Overview](#-solution-overview) | How SmartStyle solves it |
-| 3 | [✨ Key Features](#-key-features) | Full capability breakdown |
-| 4 | [🏗️ System Architecture](#-system-architecture) | How everything fits together |
-| 5 | [🧠 AI Confidence Score](#-ai-confidence-score-engine) | Scoring model deep-dive |
-| 6 | [📁 Project Structure](#-project-structure) | Codebase layout |
-| 7 | [🧩 Dataset](#-dataset-information) | Data schema & source |
-| 8 | [⚙️ Tech Stack](#-tech-stack) | Tools & frameworks used |
-| 9 | [📊 Tableau Dashboards](#-tableau-dashboards) | Embedded analytics |
-| 10 | [🚀 Getting Started](#-getting-started) | Local setup guide |
-| 11 | [☁️ Cloud Deployment](#-cloud-deployment) | Streamlit Cloud deploy |
-| 12 | [🔮 Roadmap](#-roadmap) | What's coming next |
-| 13 | [🧑‍💻 Author](#-author) | About the creator |
-
----
-
-## 🎯 Problem Statement
-
-<details open>
-<summary><b>🛒 Challenge 1 — The Return Epidemic in Fashion E-Commerce</b></summary>
-
-<br/>
-
-> Fashion e-commerce has one of the **highest return rates of any retail category — often 30–50%**. Most platforms surface products by popularity or paid ranking, with no signal about whether buyers actually kept what they ordered. This costs brands billions in logistics, reprocessing, and lost inventory value.
-
-**→ SmartStyle solves this with an [AI Confidence Score](#-ai-confidence-score-engine) that quantifies buyer retention likelihood for every product — surfacing low-return-risk items prominently.**
-
-<br/>
-</details>
-
-<details>
-<summary><b>🔍 Challenge 2 — Discovery Without Context</b></summary>
-
-<br/>
-
-> Shoppers face **choice overload** with thousands of products and no meaningful way to compare them beyond price and star rating. Brand reputation, rating volume, price-to-quality ratio, and product attributes are all siloed — never synthesized into a single decision signal.
-
-**→ Solved by the [Smart Recommendation Engine](#-key-features) which aggregates multi-dimensional product signals into ranked alternatives and "safer picks" for any item a user views.**
-
-<br/>
-</details>
-
-<details>
-<summary><b>📉 Challenge 3 — Brand Blind Spots in Performance Data</b></summary>
-
-<br/>
-
-> Fashion brands and buyers lack **real-time, visual intelligence** on how their catalog is performing — which colors drive sales, which price bands underperform, which brands consistently receive high satisfaction. Standard analytics tools require data teams; this platform makes insights self-serve.
-
-**→ Addressed by the [Interactive Dashboard Layer](#-key-features) — dynamic Plotly charts and a linked [Power BI Dashboard](https://app.powerbi.com/view?r=eyJrIjoiMWRiNTBkYTUtNmVhOC00MWI3LTgyZjQtYTA3ZDY3ZWRmYWU0IiwidCI6ImUxNGU3M2ViLTUyNTEtNDM4OC04ZDY3LThmOWYyZTJkNWE0NiIsImMiOjEwfQ==&pageName=6967225da59d13f389f1) delivering brand, color, price, and rating intelligence without writing a single query.**
-
-<br/>
-</details>
-
-<details>
-<summary><b>🎨 Challenge 4 — Color & Attribute Demand Is Invisible</b></summary>
-
-<br/>
-
-> Platforms rarely expose **color-level or attribute-level demand data** to buyers or merchandisers. Yet demand is highly concentrated — in this dataset, just two colors (Black and Blue) account for **35%+ of total sales volume** — a pattern invisible without structured analysis.
-
-**→ The [Color & Category Intelligence](#-tableau-dashboards) module visualizes attribute-level demand concentration, giving merchandisers actionable signals for assortment planning.**
-
-<br/>
-</details>
-
-<details>
-<summary><b>💸 Challenge 5 — Price-Value Disconnect</b></summary>
-
-<br/>
-
-> Premium pricing in fashion does not reliably predict customer satisfaction. Buyers often cannot determine whether a higher price corresponds to genuinely better quality or merely brand positioning — leading to disappointment, returns, and eroded trust.
-
-**→ SmartStyle's [Price Distribution Analysis](#-tableau-dashboards) reveals the weak price-value correlation in premium segments, and the confidence score penalizes items with a high price-risk ratio.**
-
-<br/>
-</details>
-
----
-
-## 💡 Solution Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    SMARTSTYLE ANALYTICS                         │
-│              AI-Powered Fashion Intelligence Layer              │
-├─────────────────┬───────────────────┬───────────────────────────┤
-│  14K+ Products  │  AI Confidence    │  Interactive              │
-│  Analyzed       │  Scoring Engine   │  Visualization Suite      │
-├─────────────────┼───────────────────┼───────────────────────────┤
-│  Multi-signal   │  Smart Product    │  Power BI +               │
-│  Filtering      │  Recommendations  │  Plotly Dashboards        │
-└─────────────────┴───────────────────┴───────────────────────────┘
-         ↓                  ↓                      ↓
-  Shoppers find       Buyers discover         Brands understand
-  what they want      low-return-risk         what sells and why
-  faster              alternatives
-```
-
-| Problem | SmartStyle Solution | Impact |
-|---------|-------------------|--------|
-| High return rates | AI Confidence Score | Surface keeper products |
-| Discovery overload | Smart Recommendations | Ranked alternatives |
-| Brand performance blind spots | Interactive dashboards | Self-serve analytics |
-| Color demand hidden | Attribute intelligence | Assortment planning |
-| Price-value disconnect | Price distribution viz | Transparent comparisons |
-
----
-
-# 📊 Dashboard Insights — Fashion Retail Performance & Intelligence
-
-> **Source:** `visualization.png` — Power BI Dashboard: *Fashion Retail Performance & Insights*
-> **Dataset:** Fashion Dataset.csv · 14,220 products · ₹169 – ₹47,999 price range
-
----
-
-## 🔢 Platform-Level KPIs
-
-| Metric | Value | Interpretation |
-|--------|-------|----------------|
-| 🛍️ Total Products | **14,220** | Full catalog size analyzed |
-| 🧠 Confidence Score | **82 / 100** | Strong overall catalog health — majority are keeper products |
-| ⭐ Average Rating | **4.10 / 5.0** | Consistently high customer satisfaction across brands |
-| 📝 Total Ratings | **~1M+** | Statistically robust signal — high review volume |
-| 💰 Price Range | **₹169 – ₹47,999** | Wide spread from budget to ultra-premium segments |
-
----
-
-## 🎨 Insight 1 — Color Demand Is Highly Concentrated
-
-> **Chart:** *Top 10 Colours by Total Sales (Donut Chart)*
-
-| Rank | Color | Total Sales | Share |
-|------|-------|-------------|-------|
-| 1 | ⚫ Black | 5.11M | 17.72% |
-| 2 | 🔵 Blue | 4.95M | 17.16% |
-| 3 | 🔴 Red | 3.70M | 12.84% |
-| 4 | 🟤 Pink | 3.55M | 12.29% |
-| 5 | 🔷 Navy Blue | 2.37M | 8.21% |
-| 6 | 🟢 Green | 2.13M | 7.37% |
-| 7 | ⬜ White | 1.99M | 6.88% |
-| 8 | 🔵 Grey | 1.70M | 5.91% |
-| 9 | 🟠 Maroon | 1.68M | 5.82% |
-| — | Others | — | ~6% |
-
-**Key Takeaway:**
-- Black + Blue alone account for **34.88% of total sales** — demand is concentrated in neutral/cool tones
-- Top 4 colors (Black, Blue, Red, Pink) capture **~60% of all sales**
-- Assortment strategy should prioritize depth in Black and Blue before expanding into niche colors
-
----
-
-## ⭐ Insight 2 — Rating vs. Sales Has a Non-Linear Relationship
-
-> **Chart:** *Sales and Average Rating by Product Colour (Bubble Chart)*
-
-- All colors cluster tightly between **4.04 – 4.12 average rating** — very low variance
-- **Navy Blue and Green** show the highest average ratings (~4.11–4.12) despite moderate sales volume
-- **Orange** has the lowest rating (~4.04) AND the lowest sales — double signal of underperformance
-- **Pink** shows high sales volume but mid-tier rating — suggests popularity driven by trend, not satisfaction
-- Rating alone is **not a reliable predictor of sales volume** — brand visibility and color trend play a larger role
-
----
-
-## 💰 Insight 3 — Premium Pricing Does Not Guarantee Higher Ratings
-
-> **Chart:** *Maximum Price vs. Average Rating by Brand and Colour (Combo Chart)*
-
-- Brands like **Readiprint Fashions** and **Masaba** command prices up to **₹30K+** but show ratings around **4.1–4.2** — similar to budget brands
-- **Average Rating line (blue)** fluctuates between **4.1 – 4.3** regardless of maximum price tier
-- **Ethnovogue** shows one of the highest average ratings (~4.3) with moderate pricing — best price-value brand
-- **Stylee Lifestyle** shows a pricing spike with no corresponding rating uplift — potential overpricing signal
-- **Conclusion:** Price-value correlation is weak across the premium segment — buyers do not consistently reward high-priced brands with better ratings
-
----
-
-## 🏷️ Insight 4 — Top Brand Breakdown by Color Segment
-
-> **Chart:** *10K Sales Segments for Top 2 Brands (Shaily vs. Readiprint Fashions)*
-
-**Shaily (Top Performer):**
-| Color Segment | Sales (10K units) |
-|---------------|-------------------|
-| Maroon | 9.72K |
-| Charcoal | 8.53K |
-| Taupe | 8.50K |
-
-**Readiprint Fashions:**
-| Color Segment | Sales (10K units) |
-|---------------|-------------------|
-| Cream | 9.00K |
-| Red | 3.82K |
-| Orange | 3.6K |
-| Coral | 3.43K |
-| Fuchsia | 5.95K |
-
-**Key Takeaway:**
-- **Shaily** dominates in neutral/earthy tones (Maroon, Charcoal, Taupe) — strong ethnic/casual wear positioning
-- **Readiprint Fashions** has a broader color spread with strength in Cream and Fuchsia — targets festive/occasion wear
-- Both brands avoid pure Black/Blue dominance — they occupy **complementary niches** to the overall market trend
-
----
-
-## 🧠 Insight 5 — Confidence Score Validates Catalog Quality
-
-- Overall catalog confidence score of **82/100** means the majority of products show:
-  - High average ratings (≥ 4.0)
-  - High review volume (statistically reliable)
-  - Acceptable price-risk ratio
-- This is a **strong signal for a low-return-risk catalog** overall
-- Products scoring below 50 (flagged as return risk) represent the minority — targeted for de-listing or re-pricing
-
----
-
-## 📌 Strategic Recommendations
-
-| Finding | Recommendation |
-|---------|----------------|
-| Black + Blue = 35% of sales | Prioritize stock depth in these colors before range expansion |
-| Weak price-value correlation | Flag premium items with ratings < 4.1 for re-pricing review |
-| Orange: low rating + low sales | Consider de-listing or repositioning orange-dominant SKUs |
-| Shaily dominates neutral tones | Partner or benchmark Shaily's assortment strategy for ethnic wear |
-| Ethnovogue: best rating-to-price ratio | Feature as a "value pick" in recommendation engine |
-| Confidence Score = 82 | Catalog is healthy — focus optimization on the bottom 18% |
-
----
-
-## ✨ Key Features
-
-<details open>
-<summary><b>🧠 AI-Powered Confidence Scoring</b></summary>
-
-<br/>
-
-- Proprietary **multi-signal confidence score (0–100%)** per product
-- Synthesizes average rating, review volume, and price-risk ratio
-- Products with high scores = high buyer retention, low return probability
-- Score displayed inline for every product in the catalog
-- Used as the primary ranking signal for recommendations
-
-</details>
-
-<details>
-<summary><b>👗 Smart Recommendation Engine</b></summary>
-
-<br/>
-
-- Surfaces **alternative products** for any item the user views
-- Recommends "safer picks" — similar items with higher confidence scores
-- Filters by brand, category, price range, and average rating
-- Ranks alternatives by combined confidence score + attribute similarity
-- Designed to reduce cart abandonment and post-purchase regret
-
-</details>
-
-<details>
-<summary><b>📈 Interactive Visualization Suite</b></summary>
-
-<br/>
-
-- **Pricing trend charts** — distribution by category and brand
-- **Brand performance comparison** — satisfaction vs. price positioning
-- **Rating distribution analysis** — volume-weighted histogram
-- **Color demand heatmaps** — attribute-level sales concentration
-- All charts built with Plotly for zoom, filter, and hover interactions
-
-</details>
-
-<details>
-<summary><b>💬 Full Product Intelligence Cards</b></summary>
-
-<br/>
-
-- Detailed product descriptions, attributes (style, material, fit)
-- Rating count, average rating, confidence score
-- Color, brand, price — all surfaced in a unified card
-- Image rendering from product URLs
-- Attribute tags for style, material, and fit classification
-
-</details>
-
-<details>
-<summary><b>🔍 Advanced Multi-Signal Filtering</b></summary>
-
-<br/>
-
-| Filter | Options |
-|--------|---------|
-| Brand | All brands in dataset |
-| Price Range | Slider with min/max |
-| Average Rating | Threshold filter (e.g., ≥ 4.0) |
-| Confidence Score | High / Medium / All |
-| Color | Dominant color filter |
-
-</details>
-
-<details>
-<summary><b>🌈 Modern Responsive UI</b></summary>
-
-<br/>
-
-- Gradient background with animated visual elements
-- Responsive grid layout for product cards
-- Streamlit custom CSS styling for a rich, app-like experience
-- Mobile-friendly layout with adaptive columns
-
-</details>
-
----
-
-## 🏗️ System Architecture
-
-```mermaid
-graph TB
-    subgraph INPUT["📥 Data Layer"]
-        CSV[Fashion Dataset CSV\n14K+ Products]
-        GH[GitHub Raw\nFile Hosting]
-        CSV --> GH
-    end
-
-    subgraph PROC["⚙️ Processing Layer"]
-        direction LR
-        PANDAS[Pandas\nData Pipeline]
-        CLEAN[Data Cleaning\n& Normalization]
-        FEAT[Feature\nEngineering]
-        PANDAS --> CLEAN --> FEAT
-    end
-
-    subgraph AI["🧠 AI & Scoring Layer"]
-        CONF[Confidence Score\nEngine]
-        REC[Recommendation\nAlgorithm]
-        FILT[Multi-Signal\nFilter Engine]
-    end
-
-    subgraph VIZ["📊 Visualization Layer"]
-        PLOTLY[Plotly\nInteractive Charts]
-        MPLOT[Matplotlib\nStatic Charts]
-        TABLEAU[Tableau\nPublic Dashboard]
-        POWERBI[Power BI\nEmbedded Dashboard]
-    end
-
-    subgraph UI["🌐 UI Layer"]
-        STREAM[Streamlit\nWeb Application]
-        CARDS[Product\nIntelligence Cards]
-        DASH[Analytics\nDashboard]
-    end
-
-    subgraph DEPLOY["☁️ Deployment"]
-        CLOUD[Streamlit Cloud\nsmartshyle-analytics.streamlit.app]
-    end
-
-    GH --> PANDAS
-    FEAT --> CONF
-    FEAT --> REC
-    FEAT --> FILT
-    CONF --> CARDS
-    REC --> CARDS
-    FILT --> CARDS
-    PLOTLY --> DASH
-    MPLOT --> DASH
-    TABLEAU --> DASH
-    POWERBI --> DASH
-    CARDS --> STREAM
-    DASH --> STREAM
-    STREAM --> CLOUD
-
-    style INPUT fill:#1a1a3a,stroke:#6366f1,color:#fff
-    style PROC fill:#1a2a1a,stroke:#22c55e,color:#fff
-    style AI fill:#3a1a3a,stroke:#a855f7,color:#fff
-    style VIZ fill:#1a2a3a,stroke:#0ea5e9,color:#fff
-    style UI fill:#3a2a1a,stroke:#f59e0b,color:#fff
-    style DEPLOY fill:#1a3a2a,stroke:#10b981,color:#fff
-```
-
----
-
-## 🧠 AI Confidence Score Engine
-
-The Confidence Score is the platform's core intelligence signal — a composite metric that answers: **"How likely is a buyer to keep this product?"**
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║           CONFIDENCE SCORE FORMULA (0 – 100%)               ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-║  Confidence Score =                                          ║
-║    (Normalized Avg Rating    × 0.45) +                       ║
-║    (Normalized Review Volume × 0.35) +                       ║
-║    (Inverse Price-Risk Ratio × 0.20)                         ║
-║                                                              ║
-╠══════════════════════════════════════════════════════════════╣
-║  CONFIDENCE TIERS                                            ║
-║  ● 75 – 100  →  🟢 High Confidence   (Keeper product)       ║
-║  ● 50 – 74   →  🟡 Medium Confidence (Likely keeper)        ║
-║  ● 0  – 49   →  🔴 Low Confidence   (Return risk)           ║
-╚══════════════════════════════════════════════════════════════╝
-```
-
-**Signal Breakdown:**
-
-| Signal | Weight | Rationale |
-|--------|--------|-----------|
-| ⭐ Average Rating | 45% | Primary proxy for buyer satisfaction |
-| 📝 Review Volume | 35% | High volume = statistically reliable signal |
-| 💸 Price-Risk Ratio | 20% | Higher price without proportional rating → return risk |
-
-**Key Findings from the Dataset:**
-- Average confidence score: **~4.1 / 5.0** across the catalog
-- Premium brands show **higher ratings** but **weak price-value correlation**
-- Black and Blue products account for **35%+ of high-confidence items**
-
----
-
-## 📁 Project Structure
-
-```
-smartstyle-analytics/
-│
-├── 📄 app.py                    # Main Streamlit application
-├── 📄 Fashion Dataset.csv       # 14K+ product records dataset
-├── 📄 visualization.png         # Sample visualization / preview image
-└── 📄 README.md                 # Project documentation
-```
-
----
-
-## 🧩 Dataset Information
-
-**Dataset:** `Fashion_Dataset.csv`
-**Scale:** 14,000+ fashion products
-**Source:** Custom-curated dataset inspired by e-commerce fashion platforms
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `p_id` | string | Unique product identifier |
-| `name` | string | Product display name |
-| `price` | float | Listed price (₹) |
-| `colour` | string | Dominant product color |
-| `brand` | string | Brand name |
-| `img` | string | Product image URL |
-| `ratingCount` | int | Total number of customer ratings |
-| `avg_rating` | float | Mean customer rating (0–5) |
-| `description` | string | Full product description |
-| `p_attributes` | string | Style, material, fit attributes |
-
-**Dataset Highlights:**
-- 🎨 Black & Blue are top-performing colors — **35%+ sales concentration**
-- ⭐ Average rating across catalog: **~4.1 / 5.0**
-- 💰 Premium brands show **higher ratings but weak price-value correlation**
-- 📦 Wide price range enabling meaningful distribution analysis
-
----
-
-## ⚙️ Tech Stack
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Frontend / App** | Streamlit | Interactive web application framework |
-| **Data Processing** | Python, Pandas, NumPy | Cleaning, transformation, feature engineering |
-| **AI / Scoring** | Python (custom logic) | Confidence score + recommendation engine |
-| **Interactive Charts** | Plotly | Dynamic, filterable visualizations |
-| **Static Charts** | Matplotlib | Supplementary visual analysis |
-| **BI Dashboard** | Tableau Public | Embedded category & brand dashboards |
-| **Executive BI** | Microsoft Power BI | Embedded analytics dashboard |
-| **Dataset Hosting** | GitHub Raw URLs | Zero-infrastructure CSV serving |
-| **Deployment** | Streamlit Cloud | Free-tier cloud hosting |
-
----
-
-## 📊 Tableau Dashboards
-
-The platform is paired with a full [Power BI Dashboard](https://app.powerbi.com/view?r=eyJrIjoiMWRiNTBkYTUtNmVhOC00MWI3LTgyZjQtYTA3ZDY3ZWRmYWU0IiwidCI6ImUxNGU3M2ViLTUyNTEtNDM4OC04ZDY3LThmOWYyZTJkNWE0NiIsImMiOjEwfQ==&pageName=6967225da59d13f389f1) delivering four dedicated views:
-
-<details open>
-<summary><b>📦 Category Performance Overview</b></summary>
-
-- Average ratings and price distributions visualized **per fashion category**
-- Identifies which product types consistently satisfy customers
-- Highlights underperforming categories with rating dips and high variance
-
-</details>
-
-<details>
-<summary><b>🏷️ Brand Comparison Intelligence</b></summary>
-
-- Side-by-side brand performance ranked by **customer satisfaction score**
-- Overlays average price to expose brands with poor price-value delivery
-- Filterable by price band to compare brands within fair segments
-
-</details>
-
-<details>
-<summary><b>💰 Price Distribution Analysis</b></summary>
-
-- Full catalog price distribution across buckets (budget → luxury)
-- Correlation scatter: price vs. average rating per product
-- Confirms **weak price-to-satisfaction correlation** in premium segments
-
-</details>
-
-<details>
-<summary><b>👥 Customer Insight Trends</b></summary>
-
-- Rating volume trends across the catalog
-- Description-length vs. rating analysis (do detailed descriptions correlate with satisfaction?)
-- Color demand concentration: **Black, Blue → 35%+ of catalog volume**
-
-</details>
-
----
-
-## 🚀 Getting Started
-
-### Option 1 — Run Locally
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/debasmita30/SmartStyle-Analytics-AI-Powered-Fashion-Recommendation-Insights-Platform.git
-cd SmartStyle-Analytics-AI-Powered-Fashion-Recommendation-Insights-Platform
-
-# 2. Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate        # macOS / Linux
-# venv\Scripts\activate         # Windows
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Launch the app
-streamlit run app.py
-```
-
-> 🌐 The app will open automatically at **[http://localhost:8501](http://localhost:8501)**
-
-### Option 2 — Quick Install (No venv)
-
-```bash
-pip install streamlit pandas numpy matplotlib plotly
-streamlit run app.py
-```
-
----
-
-## ☁️ Cloud Deployment
-
-### Streamlit Cloud (Recommended — Free)
-
-```
-1. Push repository to GitHub
-2. Visit https://share.streamlit.io
-3. Click "New app"
-4. Select your repo → set entrypoint to app.py
-5. Set subdomain → smartstyle-analytics.streamlit.app
-6. Click Deploy → live in seconds 🚀
-```
-
-| Platform | Status | Notes |
-|----------|--------|-------|
-| **Streamlit Cloud** | ✅ Live & Deployed | Free tier, instant deploy |
-| **Render** | ✅ Compatible | Add `Procfile`: `web: streamlit run app.py` |
-| **Railway** | ✅ Compatible | Auto-detects Python + Streamlit |
-| **Hugging Face Spaces** | ✅ Compatible | Use Streamlit SDK space type |
-
----
-
-## 🔮 Roadmap
-
-```mermaid
-gantt
-    title SmartStyle Analytics Roadmap
-    dateFormat  YYYY-MM-DD
-    axisFormat  %b %Y
-
-    section ✅ Completed
-    AI Confidence Scoring Engine     :done,    2024-09-01, 60d
-    Interactive Plotly Charts        :done,    2024-09-01, 60d
-    Smart Recommendations            :done,    2024-10-01, 45d
-    Power BI Dashboard               :done,    2024-11-01, 30d
-    Streamlit Cloud Deployment       :done,    2024-11-15, 15d
-
-    section 🔧 Near-term
-    NLP Sentiment on Descriptions    :active,  2025-03-01, 90d
-    Collaborative Filtering Engine   :active,  2025-04-01, 90d
-    User Session Personalization     :         2025-06-01, 60d
-
-    section 🚀 Future
-    Visual Similarity Search         :         2025-08-01, 90d
-    Real-time Trend Prediction       :         2025-10-01, 90d
-    Return Probability API           :         2026-01-01, 90d
-    Multi-platform Data Integration  :         2026-03-01, 90d
-```
-
-**Planned Features in Detail:**
-
-| Feature | Description | Priority |
-|---------|-------------|----------|
-| 🗣️ NLP Sentiment Analysis | Analyze product descriptions & infer quality signals | High |
-| 🤝 Collaborative Filtering | "Users like you also kept..." recommendations | High |
-| 🖼️ Visual Similarity Search | Upload image → get visually similar products | Medium |
-| 📈 Sales Trend Prediction | Forecast which products will trend next season | Medium |
-| 🔁 Return Probability API | Expose confidence score as a standalone REST API | Low |
-| 🌍 Multi-platform Data | Integrate live data from Myntra, Amazon Fashion | Future |
-
----
-
-## 🧑‍💻 Author
-
-<div align="center">
-
-<img src="https://github.com/identicons/debasmita30.png" width="90" style="border-radius:50%; border: 3px solid #7b2fa8;"/>
-
-<br/><br/>
-
-### Debasmita Chatterjee
-
-*Computer Science Undergraduate · B.Tech CSE + Minor in Data Science*
-*Lovely Professional University, Punjab, India*
-
-**Machine Learning · Data Science · AI Systems · NLP · Visualization**
-
-<p>
-  <a href="https://www.linkedin.com/in/debasmita-chatterjee/">
-    <img src="https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"/>
-  </a>
-  &nbsp;
-  <a href="https://github.com/debasmita30">
-    <img src="https://img.shields.io/badge/GitHub-Follow-181717?style=for-the-badge&logo=github&logoColor=white"/>
-  </a>
-  &nbsp;
-  <a href="https://ml-engineer-portfolio-f2df.vercel.app/">
-    <img src="https://img.shields.io/badge/Portfolio-Visit-7b2fa8?style=for-the-badge&logo=vercel&logoColor=white"/>
-  </a>
-  &nbsp;
-  <a href="https://smartstyle-analytics.streamlit.app/">
-    <img src="https://img.shields.io/badge/Live%20Demo-Launch-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white"/>
-  </a>
-</p>
-
-<br/>
-
-> *"Built to show that fashion intelligence isn't just for billion-dollar platforms — it's a data problem, and data problems have solutions."*
-
+""", unsafe_allow_html=True)
+
+# ============================================================
+# KPI ROW (with real signed metrics)
+# ============================================================
+overpriced_pct = (df["is_overpriced_risk"].sum() / len(df)) * 100
+gem_count = int(df["is_hidden_gem"].sum())
+underpriced_share = (df["price_deviation"] < -10).sum() / len(df) * 100
+gem_share = gem_count / len(df) * 100
+
+k1, k2, k3, k4, k5 = st.columns(5)
+kpis = [
+    (k1, "Catalog size", f"{len(df):,}", None),
+    (k2, "Median price", f"₹{df['price'].median():,.0f}", None),
+    (k3, "Avg rating", f"{df['avg_rating'].mean():.2f}", None),
+    (k4, "Hidden gem share", f"+{gem_share:.1f}%", "pos"),
+    (k5, "Overpriced risk share", f"-{overpriced_pct:.1f}%", "neg"),
+]
+for i, (col, label, value, sign) in enumerate(kpis):
+    delta_class = ""
+    if sign == "neg":
+        value_html = f"<span class='kpi-delta-neg'>{value}</span>"
+    elif sign == "pos":
+        value_html = f"<span class='kpi-delta-pos'>{value}</span>"
+    else:
+        value_html = value
+    with col:
+        st.markdown(f"""
+        <div class="kpi-card fade-in fade-{min(i+1,4)}">
+            <div class="kpi-label">{label}</div>
+            <div class="kpi-value">{value_html}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+# ============================================================
+# SIGNATURE SKETCH LINE — price journey budget -> luxury
+# ============================================================
+st.markdown('<div class="section-label">Catalog price journey</div>', unsafe_allow_html=True)
+
+bins = pd.qcut(df["price"], 12, duplicates="drop")
+journey = df.groupby(bins, observed=True)["avg_rating"].mean().values
+journey_norm = (journey - journey.min()) / (journey.max() - journey.min() + 1e-9)
+
+n = len(journey_norm)
+xs = np.linspace(10, 590, n)
+ys = 140 - (journey_norm * 110) - 10
+path_d = f"M {xs[0]:.1f} {ys[0]:.1f} "
+for i in range(1, n):
+    cx = (xs[i-1] + xs[i]) / 2
+    path_d += f"Q {cx:.1f} {ys[i-1]:.1f}, {xs[i]:.1f} {ys[i]:.1f} "
+
+sketch_svg = f"""
+<div class="fade-in fade-2" style="background:{C['bg_secondary']}; border:1px solid {C['border']}; border-radius:14px; padding:20px 24px 14px;">
+<div style="font-size:11px; color:{C['text_muted']}; margin-bottom:6px;">avg rating across price deciles — budget to luxury</div>
+<svg viewBox="0 0 600 150" style="width:100%; height:160px;" preserveAspectRatio="none">
+  <defs>
+    <filter id="wob">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.06" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3"/>
+    </filter>
+  </defs>
+  <path id="sketchline" d="{path_d}" fill="none" stroke="{C['thread']}" stroke-width="2.5"
+    stroke-linecap="round" style="filter:url(#wob); stroke-dasharray:1400; stroke-dashoffset:1400;"/>
+</svg>
+<div style="display:flex; justify-content:space-between; font-size:10px; color:{C['text_dim']}; padding:0 4px 4px;">
+  <span>₹{int(df['price'].min())}</span><span>₹{int(df['price'].median())}</span><span>₹{int(df['price'].max()):,}</span>
 </div>
-
----
-
-<div align="center">
-
-### ⭐ If this project helped or inspired you, give it a star!
-
-<br/>
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7b2fa8,50:3d1a6e,100:1a0533&height=130&section=footer" width="100%"/>
-
 </div>
+<script>
+const p = document.getElementById('sketchline');
+if (p) {{ requestAnimationFrame(() => {{ p.style.transition = 'stroke-dashoffset 1.6s ease-out'; p.style.strokeDashoffset = '0'; }}); }}
+</script>
+"""
+st.markdown(sketch_svg, unsafe_allow_html=True)
+
+# ============================================================
+# CHARTS ROW
+# ============================================================
+st.markdown('<div class="section-label">Brand &amp; value intelligence</div>', unsafe_allow_html=True)
+
+chart_col1, chart_col2 = st.columns(2)
+
+with chart_col1:
+    # Only rank brands with enough rated products for the average to mean anything —
+    # most brands in this catalog have a single rated SKU, which made every bar
+    # look identical (all ~5.0) and crammed ten long brand names onto the axis.
+    MIN_RATED_PRODUCTS = 20
+    rated = df.dropna(subset=["avg_rating"])
+    brand_sample_size = rated.groupby("brand").size()
+    eligible_brands = brand_sample_size[brand_sample_size >= MIN_RATED_PRODUCTS].index
+    reliable = rated[rated["brand"].isin(eligible_brands)]
+
+    top_brands = reliable.groupby("brand")["avg_rating"].mean().sort_values(ascending=False).head(8).reset_index()
+    top_brands["brand_short"] = top_brands["brand"].str.slice(0, 14)
+
+    rating_color_scale = alt.Scale(
+        domain=[top_brands["avg_rating"].min(), top_brands["avg_rating"].max()],
+        range=[C["rust"], C["gold"], C["sage"]]
+    )
+    bar = alt.Chart(top_brands).mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3).encode(
+        x=alt.X("brand_short", sort="-y", title=None, axis=alt.Axis(labelAngle=-30, labelColor=C["text_muted"], labelFontSize=10.5, labelLimit=120)),
+        y=alt.Y("avg_rating", title="Avg rating", scale=alt.Scale(domain=[3.5, 4.5]),
+                axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
+        color=alt.Color("avg_rating", scale=rating_color_scale, legend=None),
+        tooltip=["brand", alt.Tooltip("avg_rating", format=".2f")]
+    ).properties(height=300, title=alt.TitleParams(f"Top brands by rating (min {MIN_RATED_PRODUCTS} rated products)", color=C["text"], fontSize=12, font="Inter")
+    ).configure_view(strokeWidth=0).configure_axis(domainColor=C["border_strong"])
+    st.altair_chart(bar, use_container_width=True)
+    st.caption(f"Scale starts at 3.5 to show real spread — {len(eligible_brands)} of {df['brand'].nunique()} brands have enough ratings to compare fairly.")
+
+with chart_col2:
+    # Real product colors, not a generic palette — uses the dataset's own colour column,
+    # mapped to actual swatches so the chart matches what the products look like.
+    SWATCH_MAP = {
+        "black": "#2B2B2B", "blue": "#3266AD", "pink": "#D4537E", "green": "#5C8A4A",
+        "navy blue": "#1B2A4A", "white": "#E8E5DC", "red": "#B33A2E", "grey": "#8C8A82",
+        "maroon": "#6B2330", "yellow": "#D9B23A", "beige": "#C9B89A", "mustard": "#C68A2E",
+        "off white": "#EDE8DA", "peach": "#E8A98C", "purple": "#6B4A8A",
+    }
+    color_counts = df["colour"].str.strip().value_counts().head(10).reset_index()
+    color_counts.columns = ["colour", "count"]
+    color_counts["share"] = color_counts["count"] / len(df) * 100
+    color_counts["swatch"] = color_counts["colour"].str.lower().map(SWATCH_MAP).fillna(C["text_dim"])
+
+    donut = alt.Chart(color_counts).mark_arc(innerRadius=58, stroke=C["bg"], strokeWidth=2).encode(
+        theta=alt.Theta("count", stack=True),
+        color=alt.Color("colour", scale=alt.Scale(domain=color_counts["colour"].tolist(), range=color_counts["swatch"].tolist()), legend=None),
+        order=alt.Order("count", sort="descending"),
+        tooltip=["colour", "count", alt.Tooltip("share", format=".1f", title="share %")]
+    ).properties(height=300, title=alt.TitleParams("Catalog share by colour (top 10)", color=C["text"], fontSize=12, font="Inter")
+    ).configure_view(strokeWidth=0)
+    st.altair_chart(donut, use_container_width=True)
+
+    top4_share = color_counts.head(4)["share"].sum()
+    st.caption(f"Top 4 colours make up {top4_share:.1f}% of the catalog — demand is concentrated, not evenly spread.")
+
+st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+scatter_full = df.sample(min(900, len(df)), random_state=42).copy()
+scatter_full["signal"] = np.where(scatter_full["is_hidden_gem"], "Hidden gem",
+                      np.where(scatter_full["is_overpriced_risk"], "Overpriced risk",
+                      np.where(scatter_full["is_premium_justified"], "Premium justified", "Standard")))
+signal_scale = alt.Scale(domain=["Hidden gem", "Overpriced risk", "Premium justified", "Standard"],
+                         range=[C["sage"], C["rust"], C["gold"], C["text_dim"]])
+scatter = alt.Chart(scatter_full).mark_circle(size=42, opacity=0.75).encode(
+    x=alt.X("price", title="Price (₹)", axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
+    y=alt.Y("avg_rating", title="Rating", scale=alt.Scale(domain=[0, 5]),
+            axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
+    color=alt.Color("signal", scale=signal_scale, legend=alt.Legend(title=None, labelColor=C["text_muted"], orient="bottom")),
+    tooltip=["name", "brand", "price", alt.Tooltip("avg_rating", format=".2f"), "signal"]
+).properties(height=300, title=alt.TitleParams("Price vs rating — value quadrants", color=C["text"], fontSize=12, font="Inter")
+).configure_view(strokeWidth=0).configure_axis(domainColor=C["border_strong"])
+st.altair_chart(scatter, use_container_width=True)
+
+# ============================================================
+# PRODUCT GALLERY
+# ============================================================
+st.markdown(f'<div class="section-label">Product gallery — {len(filtered_df):,} matches</div>', unsafe_allow_html=True)
+
+sorted_df = filtered_df.sort_values("avg_rating", ascending=False)
+
+if sorted_df.empty:
+    st.warning("No products match the current filters. Try widening the price range or lowering the minimum rating.")
+else:
+    per_row = 4
+    show_df = sorted_df.head(40)
+    rows = (len(show_df) + per_row - 1) // per_row
+
+    for r in range(rows):
+        cols = st.columns(per_row)
+        for c in range(per_row):
+            idx = r * per_row + c
+            if idx >= len(show_df):
+                continue
+            product = show_df.iloc[idx]
+            with cols[c]:
+                badge_html = ""
+                if product["is_hidden_gem"]:
+                    badge_html = f'<span class="badge badge-gem">Hidden gem</span><br>'
+                elif product["is_overpriced_risk"]:
+                    badge_html = f'<span class="badge badge-risk">Overpriced risk</span><br>'
+                elif product["is_premium_justified"]:
+                    badge_html = f'<span class="badge badge-premium">Premium justified</span><br>'
+
+                dev = product["price_deviation"]
+                dev_class = "kpi-delta-neg" if dev < 0 else "kpi-delta-pos"
+                dev_sign = f"{dev:+.1f}%"
+
+                st.markdown(f"""
+                <div class="tag-card">
+                    <div class="tag-hole"></div>
+                """, unsafe_allow_html=True)
+
+                try:
+                    resp = requests.get(product["img"], timeout=4)
+                    img = Image.open(BytesIO(resp.content))
+                    st.image(img, use_container_width=True)
+                except Exception:
+                    st.markdown(f"<div style='height:140px; background:{C['bg_secondary']}; border-radius:4px; display:flex; align-items:center; justify-content:center; color:{C['text_dim']}; font-size:11px;'>image unavailable</div>", unsafe_allow_html=True)
+
+                st.markdown(f"""
+                    {badge_html}
+                    <div class="tag-name">{product['name'][:48]}{'…' if len(str(product['name']))>48 else ''}</div>
+                    <div class="tag-brand">{product['brand']} · ⭐ {product['avg_rating']:.2f}</div>
+                    <div class="tag-price-row">
+                        <span class="tag-price">₹{product['price']:,.0f}</span>
+                        <span class="{dev_class}">{dev_sign}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+# ============================================================
+# FOOTER
+# ============================================================
+st.markdown(f"""
+<div style="margin-top:36px; padding-top:18px; border-top:1px solid {C['border']}; font-size:11.5px; color:{C['text_dim']};">
+Retail Product Analytics &amp; Recommendation Modeling · price deviation, value score, and risk signals computed live from catalog medians per category · built by Debasmita Chatterjee
+</div>
+""", unsafe_allow_html=True)
