@@ -460,32 +460,75 @@ st.markdown('<div class="section-label">Brand &amp; value intelligence</div>', u
 chart_col1, chart_col2 = st.columns(2)
 
 with chart_col1:
-    top_brands = df.groupby("brand")["avg_rating"].mean().sort_values(ascending=False).head(10).reset_index()
-    bar = alt.Chart(top_brands).mark_bar(color=C["thread"], cornerRadiusTopLeft=3, cornerRadiusTopRight=3).encode(
-        x=alt.X("brand", sort="-y", title=None, axis=alt.Axis(labelAngle=-40, labelColor=C["text_muted"], labelFontSize=10)),
-        y=alt.Y("avg_rating", title="Avg rating", scale=alt.Scale(domain=[0, 5]),
+    # Only rank brands with enough rated products for the average to mean anything —
+    # most brands in this catalog have a single rated SKU, which made every bar
+    # look identical (all ~5.0) and crammed ten long brand names onto the axis.
+    MIN_RATED_PRODUCTS = 20
+    rated = df.dropna(subset=["avg_rating"])
+    brand_sample_size = rated.groupby("brand").size()
+    eligible_brands = brand_sample_size[brand_sample_size >= MIN_RATED_PRODUCTS].index
+    reliable = rated[rated["brand"].isin(eligible_brands)]
+
+    top_brands = reliable.groupby("brand")["avg_rating"].mean().sort_values(ascending=False).head(8).reset_index()
+    top_brands["brand_short"] = top_brands["brand"].str.slice(0, 14)
+
+    rating_color_scale = alt.Scale(
+        domain=[top_brands["avg_rating"].min(), top_brands["avg_rating"].max()],
+        range=[C["rust"], C["gold"], C["sage"]]
+    )
+    bar = alt.Chart(top_brands).mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3).encode(
+        x=alt.X("brand_short", sort="-y", title=None, axis=alt.Axis(labelAngle=-30, labelColor=C["text_muted"], labelFontSize=10.5, labelLimit=120)),
+        y=alt.Y("avg_rating", title="Avg rating", scale=alt.Scale(domain=[3.5, 4.5]),
                 axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
+        color=alt.Color("avg_rating", scale=rating_color_scale, legend=None),
         tooltip=["brand", alt.Tooltip("avg_rating", format=".2f")]
-    ).properties(height=300, title=alt.TitleParams("Top 10 brands by rating", color=C["text"], fontSize=12, font="Inter")
+    ).properties(height=300, title=alt.TitleParams(f"Top brands by rating (min {MIN_RATED_PRODUCTS} rated products)", color=C["text"], fontSize=12, font="Inter")
     ).configure_view(strokeWidth=0).configure_axis(domainColor=C["border_strong"])
     st.altair_chart(bar, use_container_width=True)
+    st.caption(f"Scale starts at 3.5 to show real spread — {len(eligible_brands)} of {df['brand'].nunique()} brands have enough ratings to compare fairly.")
 
 with chart_col2:
-    sample = df.sample(min(800, len(df)), random_state=42)
-    sample["signal"] = np.where(sample["is_hidden_gem"], "Hidden gem",
-                          np.where(sample["is_overpriced_risk"], "Overpriced risk",
-                          np.where(sample["is_premium_justified"], "Premium justified", "Standard")))
-    color_scale = alt.Scale(domain=["Hidden gem", "Overpriced risk", "Premium justified", "Standard"],
-                             range=[C["sage"], C["rust"], C["gold"], C["text_dim"]])
-    scatter = alt.Chart(sample).mark_circle(size=42, opacity=0.75).encode(
-        x=alt.X("price", title="Price (₹)", axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
-        y=alt.Y("avg_rating", title="Rating", scale=alt.Scale(domain=[0, 5]),
-                axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
-        color=alt.Color("signal", scale=color_scale, legend=alt.Legend(title=None, labelColor=C["text_muted"], orient="bottom")),
-        tooltip=["name", "brand", "price", alt.Tooltip("avg_rating", format=".2f"), "signal"]
-    ).properties(height=300, title=alt.TitleParams("Price vs rating — value quadrants", color=C["text"], fontSize=12, font="Inter")
-    ).configure_view(strokeWidth=0).configure_axis(domainColor=C["border_strong"])
-    st.altair_chart(scatter, use_container_width=True)
+    # Real product colors, not a generic palette — uses the dataset's own colour column,
+    # mapped to actual swatches so the chart matches what the products look like.
+    SWATCH_MAP = {
+        "black": "#2B2B2B", "blue": "#3266AD", "pink": "#D4537E", "green": "#5C8A4A",
+        "navy blue": "#1B2A4A", "white": "#E8E5DC", "red": "#B33A2E", "grey": "#8C8A82",
+        "maroon": "#6B2330", "yellow": "#D9B23A", "beige": "#C9B89A", "mustard": "#C68A2E",
+        "off white": "#EDE8DA", "peach": "#E8A98C", "purple": "#6B4A8A",
+    }
+    color_counts = df["colour"].str.strip().value_counts().head(10).reset_index()
+    color_counts.columns = ["colour", "count"]
+    color_counts["share"] = color_counts["count"] / len(df) * 100
+    color_counts["swatch"] = color_counts["colour"].str.lower().map(SWATCH_MAP).fillna(C["text_dim"])
+
+    donut = alt.Chart(color_counts).mark_arc(innerRadius=58, stroke=C["bg"], strokeWidth=2).encode(
+        theta=alt.Theta("count", stack=True),
+        color=alt.Color("colour", scale=alt.Scale(domain=color_counts["colour"].tolist(), range=color_counts["swatch"].tolist()), legend=None),
+        order=alt.Order("count", sort="descending"),
+        tooltip=["colour", "count", alt.Tooltip("share", format=".1f", title="share %")]
+    ).properties(height=300, title=alt.TitleParams("Catalog share by colour (top 10)", color=C["text"], fontSize=12, font="Inter")
+    ).configure_view(strokeWidth=0)
+    st.altair_chart(donut, use_container_width=True)
+
+    top4_share = color_counts.head(4)["share"].sum()
+    st.caption(f"Top 4 colours make up {top4_share:.1f}% of the catalog — demand is concentrated, not evenly spread.")
+
+st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+scatter_full = df.sample(min(900, len(df)), random_state=42).copy()
+scatter_full["signal"] = np.where(scatter_full["is_hidden_gem"], "Hidden gem",
+                      np.where(scatter_full["is_overpriced_risk"], "Overpriced risk",
+                      np.where(scatter_full["is_premium_justified"], "Premium justified", "Standard")))
+signal_scale = alt.Scale(domain=["Hidden gem", "Overpriced risk", "Premium justified", "Standard"],
+                         range=[C["sage"], C["rust"], C["gold"], C["text_dim"]])
+scatter = alt.Chart(scatter_full).mark_circle(size=42, opacity=0.75).encode(
+    x=alt.X("price", title="Price (₹)", axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
+    y=alt.Y("avg_rating", title="Rating", scale=alt.Scale(domain=[0, 5]),
+            axis=alt.Axis(labelColor=C["text_muted"], gridColor=C["chart_grid"], titleColor=C["text_muted"])),
+    color=alt.Color("signal", scale=signal_scale, legend=alt.Legend(title=None, labelColor=C["text_muted"], orient="bottom")),
+    tooltip=["name", "brand", "price", alt.Tooltip("avg_rating", format=".2f"), "signal"]
+).properties(height=300, title=alt.TitleParams("Price vs rating — value quadrants", color=C["text"], fontSize=12, font="Inter")
+).configure_view(strokeWidth=0).configure_axis(domainColor=C["border_strong"])
+st.altair_chart(scatter, use_container_width=True)
 
 # ============================================================
 # PRODUCT GALLERY
