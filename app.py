@@ -305,8 +305,9 @@ with st.sidebar:
     st.caption(f"Data source: **{source}** · {len(df):,} products")
 
 
-def apply_filters(data):
-    d = data.copy()
+@st.cache_data(show_spinner=False)
+def apply_filters(q, sel_cat, sel_brand, sel_colour, price_range, conf_tiers, rated_only):
+    d = df
     if q:
         ql = q.lower()
         d = d[d["name"].str.lower().str.contains(ql, na=False) |
@@ -317,15 +318,135 @@ def apply_filters(data):
         d = d[d["brand"] == sel_brand]
     if sel_colour != "All":
         d = d[d["colour"] == sel_colour]
-    d = d[d["price"].between(*price_range)]
+    d = d[d["price"].between(price_range[0], price_range[1])]
     if conf_tiers:
-        d = d[d["confidence_tier"].isin(conf_tiers)]
+        d = d[d["confidence_tier"].isin(list(conf_tiers))]
     if rated_only:
         d = d[d["is_rated"] == True]
-    return d
+    return d.copy()
 
 
-fdf = apply_filters(df)
+fdf = apply_filters(q, sel_cat, sel_brand, sel_colour,
+                    tuple(price_range), tuple(conf_tiers), rated_only)
+frated = fdf[fdf["is_rated"] == True]
+
+
+@st.cache_data(show_spinner=False)
+def _nl_index(brands, colours, cats):
+    return ({b.lower(): b for b in brands},
+            {c.lower(): c for c in colours},
+            {c.lower(): c for c in cats})
+
+
+def nl_answer(question, data):
+    """Grounded analytics assistant: parse NL → compute on the real dataframe.
+    Returns (markdown_text, dataframe_or_None). Never invents numbers."""
+    import re as _re
+    qln = " " + _re.sub(r"[^a-z0-9 ]", " ", question.lower()) + " "
+    bmap, cmap, catmap = _nl_index(
+        tuple(data["brand"].dropna().unique()),
+        tuple(data["colour"].dropna().unique()),
+        tuple(data["category"].dropna().unique()))
+
+    found_brands = [o for lo, o in bmap.items() if f" {lo} " in qln]
+    found_brand = found_brands[0] if found_brands else None
+    found_cat = next((o for lo, o in catmap.items() if f" {lo}" in qln), None)
+    found_col = next((o for lo, o in cmap.items() if f" {lo} " in qln), None)
+
+    def num(words):
+        m = _re.search(r"(?:%s)\s*([0-9][0-9,]*)" % words, qln)
+        return int(m.group(1).replace(",", "")) if m else None
+    under = num(r"under|below|less than|cheaper than|upto|up to")
+    over = num(r"above|over|more than|greater than")
+    rat_over = None
+    m = _re.search(r"rating[a-z ]*?([0-9](?:\.[0-9])?)", qln)
+    if m and "rating" in qln:
+        rat_over = float(m.group(1))
+
+    d = data
+    if found_brand: d = d[d["brand"] == found_brand]
+    if found_cat:   d = d[d["category"] == found_cat]
+    if found_col:   d = d[d["colour"] == found_col]
+    if under is not None: d = d[d["price"] <= under]
+    if over is not None:  d = d[d["price"] >= over]
+    if rat_over is not None: d = d[d["avg_rating"] >= rat_over]
+
+    chips = " · ".join(x for x in [found_brand, found_cat, found_col,
+            f"≤₹{under}" if under else None, f"≥₹{over}" if over else None,
+            f"rating≥{rat_over}" if rat_over else None] if x)
+    scope = f"*Detected filters:* {chips}\n\n" if chips else ""
+
+    cols = ["name", "brand", "category", "price", "avg_rating", "ratingCount", "confidence_score"]
+    def tbl(x):
+        t = x[cols].copy().round(2)
+        t.columns = ["Product", "Brand", "Category", "₹", "Rating", "Reviews", "Confidence"]
+        return t
+
+    if question.strip() == "" or " help " in qln or "what can you" in qln:
+        return ("I query the live catalog. Try: *best rated kurtas under 2000*, "
+                "*cheapest saree*, *top brands by confidence*, *how many black dresses*, "
+                "*most reviewed jackets*, *compare Shaily and Libas*.", None)
+
+    if " compare " in qln or " vs " in qln or " versus " in qln:
+        bs = [o for lo, o in bmap.items() if f" {lo} " in qln][:2]
+        if len(bs) >= 2:
+            rows = []
+            for b in bs:
+                sub = data[data["brand"] == b]; sr = sub[sub["is_rated"] == True]
+                rows.append({"Brand": b, "Products": len(sub),
+                    "Avg rating": round(sr["avg_rating"].mean(), 2) if len(sr) else None,
+                    "Avg confidence": round(sr["confidence_score"].mean(), 1) if len(sr) else None,
+                    "Median ₹": round(sub["price"].median(), 0),
+                    "Total reviews": int(sr["ratingCount"].sum())})
+            return (scope + f"**{bs[0]}** vs **{bs[1]}**:", pd.DataFrame(rows))
+
+    if d.empty:
+        return (scope + "No products match that — try loosening it.", None)
+
+    if "how many" in qln or qln.strip().startswith("count"):
+        return (scope + f"**{len(d):,} products** match, "
+                f"{int((d['is_rated']==True).sum()):,} with reviews.", None)
+    if "average" in qln or " mean " in qln or " avg " in qln:
+        dr = d[d["is_rated"] == True]
+        parts = [f"median price **₹{d['price'].median():,.0f}**"]
+        if len(dr): parts += [f"mean rating **{dr['avg_rating'].mean():.2f}★**",
+                              f"mean confidence **{dr['confidence_score'].mean():.0f}**"]
+        return (scope + "For that selection: " + ", ".join(parts) + ".", None)
+    if any(w in qln for w in ["cheapest", "most affordable", "lowest price", "least expensive"]):
+        return (scope + "Cheapest matches:", tbl(d.nsmallest(6, "price")))
+    if any(w in qln for w in ["most expensive", "priciest", "highest price", "costliest"]):
+        return (scope + "Priciest matches:", tbl(d.nlargest(6, "price")))
+    if any(w in qln for w in ["most reviewed", "most popular", "best selling", "bestselling"]):
+        return (scope + "Most-reviewed matches:", tbl(d[d["is_rated"] == True].nlargest(6, "ratingCount")))
+    if any(w in qln for w in ["confidence", "reliable", "safest", "safe pick", "low return"]):
+        return (scope + "Highest-confidence matches:", tbl(d[d["is_rated"] == True].nlargest(6, "confidence_score")))
+    if "top brand" in qln or ("brand" in qln and any(w in qln for w in ["best", "top", "rank"])):
+        dr = d[d["is_rated"] == True]
+        bl = (dr.groupby("brand").agg(Products=("p_id", "count"),
+              **{"Avg rating": ("avg_rating", "mean"), "Avg confidence": ("confidence_score", "mean")})
+              .query("Products>=3").sort_values("Avg confidence", ascending=False)
+              .head(8).round(2).reset_index())
+        return (scope + "Top brands by confidence (≥3 rated products):", bl)
+    if "colour" in qln or "color" in qln:
+        vc = d["colour"].value_counts().head(8).reset_index()
+        vc.columns = ["Colour", "Products"]
+        return (scope + "Colour demand in that selection:", vc)
+
+    dr = d[d["is_rated"] == True]
+    if len(dr) and any(w in qln for w in ["best", "top", "highest", "good", "recommend", "show", "find"]):
+        return (scope + "Best-rated matches:", tbl(dr.nlargest(6, "avg_rating")))
+
+    toks = [t for t in _re.findall(r"[a-z]{3,}", qln) if t not in
+            {"the", "and", "for", "with", "show", "find", "best", "good", "that",
+             "this", "what", "which", "under", "over", "give", "want", "need"}]
+    if toks:
+        mask = data["name"].str.lower().apply(lambda s: any(t in s for t in toks))
+        res = data[mask]
+        if found_brand: res = res[res["brand"] == found_brand]
+        if len(res):
+            res = res.sort_values("confidence_score", ascending=False, na_position="last")
+            return (scope + f"Closest matches for *{' '.join(toks[:4])}*:", tbl(res.head(6)))
+    return (scope + "I couldn't turn that into a query — try an example prompt above.", None)
 
 # ── MASTHEAD ──────────────────────────────────────────────────────────────
 st.markdown(f"""
@@ -338,31 +459,33 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── LIVE DATA TICKER ──────────────────────────────────────────────────────
-_corr = rated["price"].corr(rated["avg_rating"]) if len(rated) else 0
-_topc = df["colour"].value_counts(normalize=True).head(2).sum() * 100
-_hi = (df["confidence_tier"] == "High").sum()
+# ── LIVE DATA TICKER  (reacts to filters) ─────────────────────────────────
+_corr = frated["price"].corr(frated["avg_rating"]) if len(frated) > 5 else 0
+_topc = fdf["colour"].value_counts(normalize=True).head(2).sum() * 100 if len(fdf) else 0
+_hi = (fdf["confidence_tier"] == "High").sum()
+_cov = fdf["is_rated"].mean() * 100 if len(fdf) else 0
+_mr = frated["avg_rating"].mean() if len(frated) else 0
 _items = (
-    f"<b>{len(df):,}</b> PRODUCTS <span class='dot'>◆</span>"
-    f"<b>{df['brand'].nunique():,}</b> BRANDS <span class='dot'>◆</span>"
+    f"<b>{len(fdf):,}</b> PRODUCTS IN VIEW <span class='dot'>◆</span>"
+    f"<b>{fdf['brand'].nunique():,}</b> BRANDS <span class='dot'>◆</span>"
     f"PRICE↔RATING r = <b>{_corr:.2f}</b> <span class='dot'>◆</span>"
     f"TOP 2 COLOURS = <b>{_topc:.0f}%</b> OF DEMAND <span class='dot'>◆</span>"
     f"<b>{_hi:,}</b> HIGH-CONFIDENCE PICKS <span class='dot'>◆</span>"
-    f"MEAN RATING <b>{rated['avg_rating'].mean():.2f}★</b> <span class='dot'>◆</span>"
-    f"<b>{rated['is_rated'].mean()*100:.0f}%</b> RATED COVERAGE <span class='dot'>◆</span>"
+    f"MEAN RATING <b>{_mr:.2f}★</b> <span class='dot'>◆</span>"
+    f"<b>{_cov:.0f}%</b> RATED COVERAGE <span class='dot'>◆</span>"
 )
 st.markdown(f"""<div class='ticker rise d2'>
   <div class='ticker-track'>{_items}&nbsp;&nbsp;{_items}</div>
 </div>""", unsafe_allow_html=True)
 st.write("")
 
-# ── HERO KPIs  (animated count-up, rotating gradient borders) ──────────────
+# ── HERO KPIs  (react to filters · animated count-up) ─────────────────────
 _kpis = [
-    ("Products", len(df), 0, "", "#fff", "full catalog"),
-    ("Rated coverage", rated["is_rated"].mean()*100 if len(rated) else 0, 0, "%", ACCENT, f"{len(rated):,} with reviews"),
-    ("Mean rating", rated["avg_rating"].mean() if len(rated) else 0, 2, "★", GOLD, "rated only"),
-    ("Mean confidence", df["confidence_score"].mean(), 0, "", MINT, "0–100 scale"),
-    ("Brands", df["brand"].nunique(), 0, "", ELECTRIC, f"{df['category'].nunique()} categories"),
+    ("Products in view", len(fdf), 0, "", "#fff", f"of {len(df):,} total"),
+    ("Rated coverage", fdf["is_rated"].mean()*100 if len(fdf) else 0, 0, "%", ACCENT, f"{len(frated):,} with reviews"),
+    ("Mean rating", frated["avg_rating"].mean() if len(frated) else 0, 2, "★", GOLD, "rated only"),
+    ("Mean confidence", fdf["confidence_score"].mean() if fdf["confidence_score"].notna().any() else 0, 0, "", MINT, "0–100 scale"),
+    ("Brands", fdf["brand"].nunique(), 0, "", ELECTRIC, f"{fdf['category'].nunique()} categories"),
 ]
 _cards = ""
 for i, (lab, val, dec, suf, col, delta) in enumerate(_kpis):
@@ -415,15 +538,32 @@ st.write("")
 
 stitch_thread("hero")
 
-# ── TABS ──────────────────────────────────────────────────────────────────
-tab_intel, tab_explore, tab_conf, tab_reco, tab_quality = st.tabs(
-    ["Market Intelligence", "Product Explorer", "Confidence Engine",
-     "Recommendations", "Data Quality"])
+# ── NAV  (single-view render = fast; only the active view computes) ────────
+st.markdown("""<style>
+div[role="radiogroup"]{gap:6px;flex-wrap:wrap}
+div[role="radiogroup"] label{
+  border:1px solid var(--line); border-radius:999px; padding:7px 16px;
+  background:rgba(27,16,48,.5); transition:all .25s; cursor:pointer; margin:0 !important;}
+div[role="radiogroup"] label:hover{border-color:var(--electric)}
+div[role="radiogroup"] label p{font-family:'JetBrains Mono',monospace !important;
+  font-size:.74rem !important; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--mute) !important; margin:0 !important;}
+div[role="radiogroup"] label:has(input:checked){
+  background:linear-gradient(120deg,rgba(224,71,158,.25),rgba(93,228,255,.18));
+  border-color:var(--accent);}
+div[role="radiogroup"] label:has(input:checked) p{color:#fff !important;}
+div[role="radiogroup"] input{display:none}
+</style>""", unsafe_allow_html=True)
+
+VIEWS = ["Market Intelligence", "Product Explorer", "Confidence Engine",
+         "Recommendations", "Ask the Data", "Data Quality"]
+view = st.radio("nav", VIEWS, horizontal=True, label_visibility="collapsed", key="nav")
+st.write("")
 
 # ===========================================================================
 # 1 · MARKET INTELLIGENCE
 # ===========================================================================
-with tab_intel:
+if view == "Market Intelligence":
     st.markdown("### What the catalog is telling us")
     st.caption("All charts respect the sidebar filters. Rating-based views use "
                "rated products only and say so.")
@@ -470,20 +610,30 @@ with tab_intel:
         st.caption(f"Median price **₹{fdf['price'].median():,.0f}** · "
                    f"long right tail up to ₹{fdf['price'].max():,.0f}.")
 
-    # the honest finding: price vs rating
+    # the honest finding: price vs rating  — clean density + trend line
     with c4:
-        rr = fdf[fdf["is_rated"] == True]
+        rr = frated
         if len(rr) > 30:
             corr = rr["price"].corr(rr["avg_rating"])
-            samp = rr.sample(min(2500, len(rr)), random_state=1)
-            fig = px.scatter(samp, x="price", y="avg_rating", opacity=0.45,
-                             color="confidence_score",
-                             color_continuous_scale=["#5a2a6e", ACCENT, GOLD],
-                             title=f"Price vs rating  ·  r = {corr:.2f}")
-            fig.update_traces(marker=dict(size=5))
+            pcap = rr["price"].quantile(0.97)
+            dd = rr[rr["price"] <= pcap]
+            fig = px.density_heatmap(
+                dd, x="price", y="avg_rating", nbinsx=42, nbinsy=26,
+                color_continuous_scale=["rgba(18,10,31,0)", "#5a2a6e", ACCENT, GOLD],
+                title=f"Price vs rating · r = {corr:.2f} (flat = no link)")
+            # least-squares trend line drawn over the density (numpy, no extra deps)
+            b, a = np.polyfit(dd["price"], dd["avg_rating"], 1)
+            xs = np.array([dd["price"].min(), dd["price"].max()])
+            fig.add_trace(go.Scatter(
+                x=xs, y=a + b * xs, mode="lines", name="trend",
+                line=dict(color=ELECTRIC, width=3, dash="dash"),
+                hovertemplate="trend<extra></extra>"))
+            fig.update_layout(coloraxis_colorbar=dict(title="density"),
+                              showlegend=False)
+            fig.update_yaxes(range=[2.8, 5.05])
             st.plotly_chart(plotly_theme(fig), use_container_width=True)
-            st.caption("Near-zero correlation: **paying more does not buy a better "
-                       "rating.** This is the platform's headline merchandising insight.")
+            st.caption("Density of products, not a point cloud. The flat trend line makes "
+                       "the headline visible: **paying more does not buy a better rating.**")
         else:
             st.info("Not enough rated products to show correlation.")
 
@@ -506,10 +656,66 @@ with tab_intel:
     else:
         st.info("No rated products to rank under the current filter.")
 
+    # ── VALUE MATRIX — find hidden gems vs overpriced risk ────────────────
+    st.markdown("#### Value matrix — where price meets confidence")
+    rr = frated.copy()
+    if len(rr) > 40:
+        rr["price_pct"] = rr["price"].rank(pct=True) * 100
+        cx, cy = 50, 60  # quadrant splits: median price percentile, confidence 60
+
+        def quad(r):
+            hi_price = r["price_pct"] >= cx
+            hi_conf = r["confidence_score"] >= cy
+            if hi_conf and not hi_price:
+                return "Hidden gem"
+            if hi_conf and hi_price:
+                return "Premium performer"
+            if not hi_conf and hi_price:
+                return "Overpriced risk"
+            return "Budget basic"
+        rr["segment"] = rr.apply(quad, axis=1)
+        cmap = {"Hidden gem": MINT, "Premium performer": ELECTRIC,
+                "Overpriced risk": ACCENT, "Budget basic": "#8a78aa"}
+
+        vm, vt = st.columns([1.4, 1])
+        with vm:
+            samp = rr.sample(min(2200, len(rr)), random_state=2)
+            fig = px.scatter(samp, x="price_pct", y="confidence_score",
+                             color="segment", color_discrete_map=cmap,
+                             opacity=0.6, hover_data=["name", "brand", "price"],
+                             title="Price percentile vs confidence")
+            fig.update_traces(marker=dict(size=6))
+            fig.add_hline(y=cy, line_dash="dot", line_color="rgba(255,255,255,.25)")
+            fig.add_vline(x=cx, line_dash="dot", line_color="rgba(255,255,255,.25)")
+            fig.update_xaxes(title="cheaper ◄  price percentile  ► pricier")
+            st.plotly_chart(plotly_theme(fig, h=420), use_container_width=True)
+        with vt:
+            counts = rr["segment"].value_counts()
+            gem = counts.get("Hidden gem", 0)
+            risk = counts.get("Overpriced risk", 0)
+            st.markdown(f"""<div class='panel'>
+            <h3 style='margin-bottom:6px'>Auto-read</h3>
+            <p style='color:{MUTE_TX};font-size:.88rem;line-height:1.6'>
+            <b style='color:{MINT}'>{gem:,} hidden gems</b> — cheaper than the median yet
+            high-confidence. Surface these in the recommender.<br><br>
+            <b style='color:{ACCENT}'>{risk:,} overpriced risks</b> — premium price, weak
+            confidence. Candidates for re-pricing or de-listing.</p>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("###### Top hidden gems (cheap + high confidence)")
+        gems = (rr[rr["segment"] == "Hidden gem"]
+                .nlargest(8, "confidence_score")
+                [["name", "brand", "category", "price", "avg_rating",
+                  "ratingCount", "confidence_score"]].round(2))
+        gems.columns = ["Product", "Brand", "Category", "₹", "Rating", "Reviews", "Confidence"]
+        st.dataframe(gems, use_container_width=True, hide_index=True)
+    else:
+        st.info("Widen the filters to populate the value matrix.")
+
 # ===========================================================================
 # 2 · PRODUCT EXPLORER  (paginated over the full catalog)
 # ===========================================================================
-with tab_explore:
+elif view == "Product Explorer":
     top = st.columns([2, 1, 1])
     sort_by = top[0].selectbox(
         "Sort by", ["Confidence (high→low)", "Rating (high→low)",
@@ -578,7 +784,7 @@ with tab_explore:
 # ===========================================================================
 # 3 · CONFIDENCE ENGINE
 # ===========================================================================
-with tab_conf:
+elif view == "Confidence Engine":
     _mean_conf = float(df["confidence_score"].mean())
     _hi_pct = (df["confidence_tier"] == "High").mean() * 100
     _med_pct = (df["confidence_tier"] == "Medium").mean() * 100
@@ -707,7 +913,7 @@ fairly-priced, well-rated items are not.</span>
 # ===========================================================================
 # 4 · RECOMMENDATIONS  —  safer picks
 # ===========================================================================
-with tab_reco:
+elif view == "Recommendations":
     st.markdown("### Find a safer, better-rated alternative")
     st.caption("Pick any product; the engine surfaces same-category items with a "
                "higher confidence score, ranked by confidence and price proximity.")
@@ -764,9 +970,47 @@ with tab_reco:
                        "no higher-confidence alternative found.")
 
 # ===========================================================================
-# 5 · DATA QUALITY  (the part recruiters love)
+# 6 · ASK THE DATA  (grounded assistant)
 # ===========================================================================
-with tab_quality:
+elif view == "Ask the Data":
+    st.markdown("### Ask the data")
+    st.caption("A grounded assistant — it runs a real query over the catalog and shows "
+               "the exact rows behind every answer. It never invents numbers.")
+
+    if "chat" not in st.session_state:
+        st.session_state.chat = [{
+            "role": "assistant",
+            "content": "Ask me about brands, prices, ratings, colours or categories. "
+                       "Try one of the examples below.", "table": None}]
+
+    for msg in st.session_state.chat:
+        with st.chat_message(msg["role"],
+                             avatar="◆" if msg["role"] == "assistant" else "🧑"):
+            st.markdown(msg["content"])
+            if msg.get("table") is not None:
+                st.dataframe(msg["table"], use_container_width=True, hide_index=True)
+
+    examples = ["best rated kurtas under 2000", "cheapest saree",
+                "top brands by confidence", "how many black dresses",
+                "most reviewed jackets", "compare Shaily and Libas"]
+    st.write("")
+    ecols = st.columns(3)
+    clicked = None
+    for i, ex in enumerate(examples):
+        if ecols[i % 3].button(ex, use_container_width=True, key=f"ex{i}"):
+            clicked = ex
+
+    prompt = st.chat_input("Ask about the catalog…") or clicked
+    if prompt:
+        st.session_state.chat.append({"role": "user", "content": prompt, "table": None})
+        text, table = nl_answer(prompt, df)
+        st.session_state.chat.append({"role": "assistant", "content": text, "table": table})
+        st.rerun()
+
+# ===========================================================================
+# 7 · DATA QUALITY  (the part recruiters love)
+# ===========================================================================
+elif view == "Data Quality":
     st.markdown("### Data-quality audit")
     st.caption("A real export is messy. This page documents exactly what was wrong "
                "and how it was handled — the analytical decisions behind the numbers.")
@@ -782,7 +1026,7 @@ with tab_quality:
         <li>Parsed colour, category, occasion, fabric</li>
         </ul></div>""", unsafe_allow_html=True)
     with q2:
-        cov = rated["is_rated"].mean() * 100 if len(rated) else 0
+        cov = df["is_rated"].mean() * 100   # over the FULL catalog, not the rated subset
         st.markdown(f"""<div class='panel'><h3>The honest catch</h3>
         <span class='tag' style='color:{ACCENT};border-color:{ACCENT}'>{100-cov:.0f}% unrated</span>
         <p style='color:{MUTE_TX};font-size:.86rem;line-height:1.6'>
