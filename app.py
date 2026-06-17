@@ -984,8 +984,7 @@ elif view == "Ask the Data":
                        "Try one of the examples below.", "table": None}]
 
     for msg in st.session_state.chat:
-        with st.chat_message(msg["role"],
-                             avatar="◆" if msg["role"] == "assistant" else "🧑"):
+        with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg.get("table") is not None:
                 st.dataframe(msg["table"], use_container_width=True, hide_index=True)
